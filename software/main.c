@@ -185,7 +185,7 @@ uint8_t I2C_read(uint8_t ack) {
   uint8_t data = 0;                       // variable for the received byte
   I2C_SDA_HIGH();                         // release SDA -> will be toggled by slave
   for(uint8_t i =8; i; i--) {             // receive 8 bits
-    data<<=1;                             // bits shifted in right (MSB first)
+    data<<=1;                             // bits shifted in to the left (MSB first)
     I2C_SCL_HIGH();                       // clock HIGH
     if(I2C_SDA_READ()) data |=1;          // read bit
     I2C_SCL_LOW();                        // clock LOW -> slave prepares next bit
