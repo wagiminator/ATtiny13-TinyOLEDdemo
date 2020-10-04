@@ -169,7 +169,7 @@ void I2C_stop(){
 
 // transmit one data byte to the slave, ignore ACK bit, no clock stretching allowed
 void I2C_write(uint8_t data) {
-  for(uint8_t i = 8; i; i--, data<<=1) {  // transmit 8 bits
+  for(uint8_t i = 8; i; i--, data<<=1) {  // transmit 8 bits, MSB first
     I2C_SDA_LOW();                        // SDA LOW for now (saves some flash this way)
     if (data & 0x80) I2C_SDA_HIGH();      // SDA HIGH if bit is 1
     I2C_SCL_HIGH();                       // clock HIGH -> slave reads the bit
