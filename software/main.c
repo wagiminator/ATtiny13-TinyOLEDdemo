@@ -1,9 +1,9 @@
-// tinyOLEDdemo - controlling an I2C OLED with an ATtiny13
+// tinyOLEDdemo - controlling an I²C OLED with an ATtiny13
 //
-// This is just a little demo on how to use an I2C OLED with the limited
+// This is just a little demo on how to use an I²C OLED with the limited
 // capabilities of an ATtiny13.
 //
-// The I2C protocol implementation is based on a crude bitbanging method.
+// The I²C protocol implementation is based on a crude bitbanging method.
 // It was specifically designed for the limited resources of ATtiny10 and
 // ATtiny13, but should work with some other AVRs as well.
 // To make the code as compact as possible, the following restrictions apply:
@@ -185,7 +185,7 @@ uint8_t I2C_read(uint8_t ack) {
   uint8_t data = 0;                       // variable for the received byte
   I2C_SDA_HIGH();                         // release SDA -> will be toggled by slave
   for(uint8_t i =8; i; i--) {             // receive 8 bits
-    data<<=1;                             // bits shifted in to the left (MSB first)
+    data<<=1;                             // bits shifted in MSB first
     I2C_SCL_HIGH();                       // clock HIGH
     if(I2C_SDA_READ()) data |=1;          // read bit
     I2C_SCL_LOW();                        // clock LOW -> slave prepares next bit
@@ -199,7 +199,7 @@ uint8_t I2C_read(uint8_t ack) {
 
 // initialize the OLED
 void OLED_init(void) {
-  I2C_init();                             // initialize I2C first
+  I2C_init();                             // initialize I²C first
   I2C_start();                            // start transmission
   I2C_write(OLED_ADDR);                   // send address of OLED
   I2C_write(0x00);                        // set command mode
