@@ -59,7 +59,7 @@
 
 #define OLED_ADDR       0x78                    // OLED write address
 #define OLED_HEIGHT     32                      // display height (32 or 64 pixels)
-#define OLED_INIT_LEN   18                      // 18: no screen flip, 20: screen flip
+#define OLED_INIT_LEN   16                      // 16: no screen flip, 18: screen flip
 
 
 // OLED init settings
@@ -67,7 +67,6 @@ const uint8_t OLED_INIT_CMD[] PROGMEM = {
   0xA8, 0x1F,       // set multiplex (HEIGHT-1): 0x1F for 128x32, 0x3F for 128x64 
   0x22, 0x00, 0x03, // set min and max page
   0x20, 0x00,       // set horizontal memory addressing mode
-  0xD3, 0x00,       // set vertical shift to 0
   0xDA, 0x02,       // set COM pins hardware configuration to sequential
   0xDB, 0x40,       // set vcom detect 
   0xD9, 0xF1,       // set pre-charge period
@@ -147,6 +146,9 @@ const uint8_t OLED_font [] PROGMEM = {
 // messages to print on OLED
 const char Message1[] PROGMEM = "HELLO WORLD !";
 const char Message2[] PROGMEM = "ATTINY13 GOES OLED !";
+const char Message3[] PROGMEM = "THE QUICK BROWN FOX";
+const char Message4[] PROGMEM = "JUMPS OVER THE LAZY";
+const char Message5[] PROGMEM = "DOG  - (0123456789)";
 
 // I2C init function
 void I2C_init(void) {
@@ -180,23 +182,6 @@ void I2C_write(uint8_t data) {
   I2C_SCL_LOW();                          // but ACK bit is ignored
 }
 
-// receive one data byte from the slave (ack=0 for last byte, ack=1 if more bytes to follow)
-uint8_t I2C_read(uint8_t ack) {
-  uint8_t data = 0;                       // variable for the received byte
-  I2C_SDA_HIGH();                         // release SDA -> will be toggled by slave
-  for(uint8_t i =8; i; i--) {             // receive 8 bits
-    data<<=1;                             // bits shifted in MSB first
-    I2C_SCL_HIGH();                       // clock HIGH
-    if(I2C_SDA_READ()) data |=1;          // read bit
-    I2C_SCL_LOW();                        // clock LOW -> slave prepares next bit
-  }
-  if (ack) I2C_SDA_LOW();                 // pull SDA LOW to acknowledge (ACK)
-  I2C_SCL_HIGH();                         // clock HIGH -> slave reads ACK bit
-  I2C_SCL_LOW();                          // clock LOW again
-  I2C_SDA_HIGH();                         // release SDA line (needed????)
-  return(data);                           // return the received byte
-}
-
 // initialize the OLED
 void OLED_init(void) {
   I2C_init();                             // initialize I²C first
@@ -204,6 +189,16 @@ void OLED_init(void) {
   I2C_write(OLED_ADDR);                   // send address of OLED
   I2C_write(0x00);                        // set command mode
   for (uint8_t i = 0; i < OLED_INIT_LEN; i++) I2C_write(pgm_read_byte(&OLED_INIT_CMD[i])); // send the command bytes
+  I2C_stop();                             // stop transmission
+}
+
+// set vertical shift
+void OLED_shift(uint8_t ypos) {
+  I2C_start();                            // start transmission
+  I2C_write(OLED_ADDR);                   // send address of OLED
+  I2C_write(0x00);                        // set command mode
+  I2C_write(0xD3);                        // vertical shift command
+  I2C_write(ypos);                        // reset vertical shift value
   I2C_stop();                             // stop transmission
 }
 
@@ -246,21 +241,29 @@ void OLED_clear(void) {
   I2C_write(0x40);                        // set data mode
   for(uint16_t i=512; i; i--) I2C_write(0x00); // clear the screen
   I2C_stop();                             // stop transmission
+  OLED_shift(0);                          // reset vertical shift
 }
 
 // main function
 int main(void) {
   OLED_init();                            // initialize the OLED
-  OLED_clear();                           // clear screen
 
-  while(1) {                              // loop until forever
+  while(1) {                              // loop until forever                         
     // print messages
+    OLED_clear();                         // clear screen
     OLED_cursor(20, 0);                   // set cursor position
     OLED_printP(Message1);                // print message 1
     _delay_ms(1000);                      // wait a second
     OLED_cursor(5, 2);                    // set cursor position
     OLED_printP(Message2);                // print message 2
-    _delay_ms(5000);                      // wait 5 seconds
+    _delay_ms(4000);                      // wait 4 seconds
+    OLED_clear();
+    OLED_printP(Message3);                // print message 3
+    OLED_cursor(0, 1);                    // set cursor next line
+    OLED_printP(Message4);                // print message 4
+    OLED_cursor(0, 2);                    // set cursor next line
+    OLED_printP(Message5);                // print message 5
+    _delay_ms(4000);                      // wait 4 seconds
 
     // print all characters
     OLED_cursor(0, 0);                    // set cursor at upper left corner
@@ -269,24 +272,12 @@ int main(void) {
     I2C_write(0x40);                      // set data mode
     for(uint8_t i=32; i<64+32; i++) OLED_printC(i); // print all characters
     I2C_stop();                           // stop transmission
-    _delay_ms(5000);                      // wait 5 seconds
+    _delay_ms(3000);                      // wait 3 seconds
 
     // scroll out the text
-    for (uint8_t i=0; i<32; i++) {
-      I2C_start();                        // start transmission
-      I2C_write(OLED_ADDR);               // send address of OLED
-      I2C_write(0x00);                    // set command mode
-      I2C_write(0xD3);                    // vertical shift command
-      I2C_write(i);                       // vertical shift value
-      I2C_stop();                         // stop transmission
+    for (uint8_t i=0; i<32; i++) {        // shift 32 pixels upwards
+      OLED_shift(i);                      // set vertical shift value
       _delay_ms(100);                     // delay a bit
     }
-    OLED_clear();                         // clear screen
-    I2C_start();                          // start transmission
-    I2C_write(OLED_ADDR);                 // send address of OLED
-    I2C_write(0x00);                      // set command mode
-    I2C_write(0xD3);                      // vertical shift command
-    I2C_write(0x00);                      // reset vertical shift value
-    I2C_stop();                           // stop transmission
   }
 }
