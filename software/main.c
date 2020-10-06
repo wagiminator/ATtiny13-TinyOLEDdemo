@@ -257,7 +257,7 @@ int main(void) {
     OLED_cursor(5, 2);                    // set cursor position
     OLED_printP(Message2);                // print message 2
     _delay_ms(4000);                      // wait 4 seconds
-    OLED_clear();
+    OLED_clear();                         // clear screen
     OLED_printP(Message3);                // print message 3
     OLED_cursor(0, 1);                    // set cursor next line
     OLED_printP(Message4);                // print message 4
