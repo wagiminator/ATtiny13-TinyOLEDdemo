@@ -198,7 +198,7 @@ void OLED_shift(uint8_t ypos) {
   I2C_write(OLED_ADDR);                   // send address of OLED
   I2C_write(0x00);                        // set command mode
   I2C_write(0xD3);                        // vertical shift command
-  I2C_write(ypos);                        // reset vertical shift value
+  I2C_write(ypos);                        // set vertical shift value
   I2C_stop();                             // stop transmission
 }
 
