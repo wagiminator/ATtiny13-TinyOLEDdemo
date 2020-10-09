@@ -44,23 +44,27 @@
 // License: http://creativecommons.org/licenses/by-sa/3.0/
 
 
+// libraries
 #include <avr/io.h>
 #include <avr/pgmspace.h>
 #include <util/delay.h>
 
-#define I2C_SDA         PB0                     // serial data pin
-#define I2C_SCL         PB2                     // serial clock pin
-#define I2C_SDA_HIGH()  (DDRB &= ~(1<<I2C_SDA)) // release SDA   -> pulled HIGH by resistor
-#define I2C_SDA_LOW()   (DDRB |=  (1<<I2C_SDA)) // SDA as output -> pulled LOW  by MCU
-#define I2C_SCL_HIGH()  (DDRB &= ~(1<<I2C_SCL)) // release SCL   -> pulled HIGH by resistor
-#define I2C_SCL_LOW()   (DDRB |=  (1<<I2C_SCL)) // SCL as output -> pulled LOW  by MCU
-#define I2C_SDA_READ()  (PINB  &  (1<<I2C_SDA)) // read SDA line
-#define I2C_SCL_READ()  (PINB  &  (1<<I2C_SCL)) // read SCL line
+// I2C definitions
+#define I2C_SDA         PB0                   // serial data pin
+#define I2C_SCL         PB2                   // serial clock pin
+#define I2C_SDA_HIGH()  DDRB &= ~(1<<I2C_SDA) // release SDA   -> pulled HIGH by resistor
+#define I2C_SDA_LOW()   DDRB |=  (1<<I2C_SDA) // SDA as output -> pulled LOW  by MCU
+#define I2C_SCL_HIGH()  DDRB &= ~(1<<I2C_SCL) // release SCL   -> pulled HIGH by resistor
+#define I2C_SCL_LOW()   DDRB |=  (1<<I2C_SCL) // SCL as output -> pulled LOW  by MCU
+#define I2C_SDA_READ()  PINB &   (1<<I2C_SDA) // read SDA line
+#define I2C_SCL_READ()  PINB &   (1<<I2C_SCL) // read SCL line
 
-#define OLED_ADDR       0x78                    // OLED write address
-#define OLED_HEIGHT     32                      // display height (32 or 64 pixels)
-#define OLED_INIT_LEN   16                      // 16: no screen flip, 18: screen flip
-
+// OLED definitions
+#define OLED_ADDR       0x78                  // OLED write address
+#define OLED_CMD_MODE   0x00                  // set command mode
+#define OLED_DAT_MODE   0x40                  // set data mode
+#define OLED_HEIGHT     32                    // display height (32 or 64 pixels)
+#define OLED_INIT_LEN   16                    // 16: no screen flip, 18: screen flip
 
 // OLED init settings
 const uint8_t OLED_INIT_CMD[] PROGMEM = {
@@ -76,7 +80,7 @@ const uint8_t OLED_INIT_CMD[] PROGMEM = {
 };
 
 // standard ASCII 5x8 font (adapted from Neven Boyanov and Stephen Denne)
-const uint8_t OLED_font [] PROGMEM = {
+const uint8_t OLED_FONT[] PROGMEM = {
   0x00, 0x00, 0x00, 0x00, 0x00, //   0 
   0x00, 0x00, 0x2f, 0x00, 0x00, // ! 1 
   0x00, 0x07, 0x00, 0x07, 0x00, // " 2 
@@ -156,20 +160,7 @@ void I2C_init(void) {
   PORTB &= ~((1<<I2C_SDA)|(1<<I2C_SCL));  // should be LOW when as ouput
 }
 
-// I2C start condition
-void I2C_start(void) {
-  I2C_SDA_LOW();                          // SDA goes LOW first
-  I2C_SCL_LOW();                          // SCL goes LOW second
-}
-
-// I2C stop condition
-void I2C_stop(){
-  I2C_SDA_LOW();                          // prepare SDA for LOW to HIGH transition
-  I2C_SCL_HIGH();                         // SCL goes HIGH first
-  I2C_SDA_HIGH();                         // SDA goes HIGH second
-}
-
-// transmit one data byte to the slave, ignore ACK bit, no clock stretching allowed
+// I2C transmit one data byte to the slave, ignore ACK bit, no clock stretching allowed
 void I2C_write(uint8_t data) {
   for(uint8_t i = 8; i; i--, data<<=1) {  // transmit 8 bits, MSB first
     I2C_SDA_LOW();                        // SDA LOW for now (saves some flash this way)
@@ -182,38 +173,49 @@ void I2C_write(uint8_t data) {
   I2C_SCL_LOW();                          // but ACK bit is ignored
 }
 
-// initialize the OLED
+// I2C start transmission
+void I2C_start(uint8_t addr) {
+  I2C_SDA_LOW();                          // start condition: SDA goes LOW first
+  I2C_SCL_LOW();                          // start condition: SCL goes LOW second
+  I2C_write(addr);                        // send slave address
+}
+
+// I2C stop transmission
+void I2C_stop(void){
+  I2C_SDA_LOW();                          // prepare SDA for LOW to HIGH transition
+  I2C_SCL_HIGH();                         // stop condition: SCL goes HIGH first
+  I2C_SDA_HIGH();                         // stop condition: SDA goes HIGH second
+}
+
+// OLED init function
 void OLED_init(void) {
-  I2C_init();                             // initialize I²C first
-  I2C_start();                            // start transmission
-  I2C_write(OLED_ADDR);                   // send address of OLED
-  I2C_write(0x00);                        // set command mode
+  I2C_init();                             // initialize I2C first
+  I2C_start(OLED_ADDR);                   // start transmission to OLED
+  I2C_write(OLED_CMD_MODE);               // set command mode
   for (uint8_t i = 0; i < OLED_INIT_LEN; i++) I2C_write(pgm_read_byte(&OLED_INIT_CMD[i])); // send the command bytes
   I2C_stop();                             // stop transmission
 }
 
-// set vertical shift
+// OLED set vertical shift
 void OLED_shift(uint8_t ypos) {
-  I2C_start();                            // start transmission
-  I2C_write(OLED_ADDR);                   // send address of OLED
-  I2C_write(0x00);                        // set command mode
+  I2C_start(OLED_ADDR);                   // start transmission to OLED
+  I2C_write(OLED_CMD_MODE);               // set command mode
   I2C_write(0xD3);                        // vertical shift command
-  I2C_write(ypos);                        // set vertical shift value
+  I2C_write(ypos);                        // reset vertical shift value
   I2C_stop();                             // stop transmission
 }
 
-// print a character on the OLED
+// OLED print a character
 void OLED_printC(char ch) {
   uint16_t offset = (ch - 32) * 5;        // calculate position of character in font array
   I2C_write(0x00);                        // print spacing between characters
-  for(uint8_t i=5; i; i--, offset++) I2C_write(pgm_read_byte(&OLED_font[offset])); // print character
+  for(uint8_t i=5; i; i--, offset++) I2C_write(pgm_read_byte(&OLED_FONT[offset])); // print character
 }
 
-// prints a string from program memory on the OLED
+// OLED print a string from program memory
 void OLED_printP(const char* p) {
-  I2C_start();                            // start transmission
-  I2C_write(OLED_ADDR);                   // send address of OLED
-  I2C_write(0x40);                        // set data mode
+  I2C_start(OLED_ADDR);                   // start transmission to OLED
+  I2C_write(OLED_DAT_MODE);               // set data mode
   char ch = pgm_read_byte(p);             // read first character from program memory
   while (ch != 0) {                       // repeat until string terminator
     OLED_printC(ch);                      // print character on OLED
@@ -222,23 +224,21 @@ void OLED_printP(const char* p) {
   I2C_stop();                             // stop transmission
 }
 
-// sets the cursor on OLED
+// OLED set the cursor
 void OLED_cursor(uint8_t xpos, uint8_t ypos) {
-  I2C_start();                            // start transmission
-  I2C_write(OLED_ADDR);                   // send address of OLED
-  I2C_write(0x00);                        // set command mode
+  I2C_start(OLED_ADDR);                   // start transmission to OLED
+  I2C_write(OLED_CMD_MODE);               // set command mode
   I2C_write(xpos & 0x0F);                 // set low nibble of start column
   I2C_write(0x10 | (xpos >> 4));          // set high nibble of start column
   I2C_write(0xB0 | (ypos & 0x07));        // set start page
   I2C_stop();                             // stop transmission
 }
 
-// clear screen on the OLED
+// OLED clear screen
 void OLED_clear(void) {
   OLED_cursor(0, 0);                      // set cursor at upper left corner
-  I2C_start();                            // start transmission
-  I2C_write(OLED_ADDR);                   // send address of OLED
-  I2C_write(0x40);                        // set data mode
+  I2C_start(OLED_ADDR);                   // start transmission to OLED
+  I2C_write(OLED_DAT_MODE);               // set data mode
   for(uint16_t i=512; i; i--) I2C_write(0x00); // clear the screen
   I2C_stop();                             // stop transmission
   OLED_shift(0);                          // reset vertical shift
@@ -257,7 +257,7 @@ int main(void) {
     OLED_cursor(5, 2);                    // set cursor position
     OLED_printP(Message2);                // print message 2
     _delay_ms(4000);                      // wait 4 seconds
-    OLED_clear();                         // clear screen
+    OLED_clear();
     OLED_printP(Message3);                // print message 3
     OLED_cursor(0, 1);                    // set cursor next line
     OLED_printP(Message4);                // print message 4
@@ -267,9 +267,8 @@ int main(void) {
 
     // print all characters
     OLED_cursor(0, 0);                    // set cursor at upper left corner
-    I2C_start();                          // start transmission
-    I2C_write(OLED_ADDR);                 // send address of OLED
-    I2C_write(0x40);                      // set data mode
+    I2C_start(OLED_ADDR);                 // start transmission to OLED
+    I2C_write(OLED_DAT_MODE);             // set data mode
     for(uint8_t i=32; i<64+32; i++) OLED_printC(i); // print all characters
     I2C_stop();                           // stop transmission
     _delay_ms(3000);                      // wait 3 seconds
