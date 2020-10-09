@@ -209,7 +209,7 @@ void OLED_shift(uint8_t ypos) {
 void OLED_printC(char ch) {
   uint16_t offset = (ch - 32) * 5;        // calculate position of character in font array
   I2C_write(0x00);                        // print spacing between characters
-  for(uint8_t i=5; i; i--, offset++) I2C_write(pgm_read_byte(&OLED_FONT[offset])); // print character
+  for(uint8_t i=5; i; i--) I2C_write(pgm_read_byte(&OLED_FONT[offset++])); // print character
 }
 
 // OLED print a string from program memory
