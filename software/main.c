@@ -181,7 +181,7 @@ void I2C_start(uint8_t addr) {
 }
 
 // I2C stop transmission
-void I2C_stop(void){
+void I2C_stop(void) {
   I2C_SDA_LOW();                          // prepare SDA for LOW to HIGH transition
   I2C_SCL_HIGH();                         // stop condition: SCL goes HIGH first
   I2C_SDA_HIGH();                         // stop condition: SDA goes HIGH second
