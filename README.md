@@ -1,6 +1,10 @@
 # TinyOLEDdemo - I²C OLED on an ATtiny13
 This is just a little demo on how to use an I²C OLED with the limited capabilities of an ATtiny13.
 
+![pic1.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/TinyOLEDdemo_pic1.jpg)
+![pic2.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/TinyOLEDdemo_pic2.jpg)
+![pic3.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/TinyOLEDdemo_pic3.jpg)
+
 The I²C protocol implementation is based on a crude bitbanging method. It was specifically designed for the limited resources of ATtiny10 and ATtiny13, but should work with some other AVRs as well. To make the code as compact as possible, the following restrictions apply:
 - the clock frequency of the MCU must not exceed 1.6 MHz,
 - the slave device must support fast mode 400 kbps (is mostly the case),
