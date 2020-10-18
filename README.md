@@ -12,6 +12,8 @@ The I²C protocol implementation is based on a crude bitbanging method. It was s
 - the slave device must not stretch the clock (this is usually the case),
 - the acknowledge bit sent by the slave device is ignored.
 
+If these restrictions are observed, the implementation works without delays. An SCL HIGH must be at least 600ns long in Fast Mode. At a maximum clock rate of 1.6 MHz, this is at least one clock cycle. An SCL LOW must be at least 1300ns long. Since the SDA signal has to be applied anyway, a total of at least three clock cycles pass. Ignoring the ACK signal and disregarding clock stretching also saves a few bytes of flash.
+
 Don't forget the pull-up resistors on the SDA and SCL lines! Many modules, such as the SSD1306 OLED module, have already integrated them.
 
 # I²C Protocol Specification
