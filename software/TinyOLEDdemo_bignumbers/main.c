@@ -153,15 +153,15 @@ uint8_t OLED_stretch(uint8_t b) {
 
 // OLED print a big digit
 void OLED_printD(uint8_t ch) {
-  uint8_t i, j, k, l, b;                  // loop variables
+  uint8_t i, j, k, b;                     // loop variables
   uint8_t sb[4];                          // stretched character bytes
   ch += ch << 1;                          // calculate position of character in font array
   for(i=8; i; i--) I2C_write(0x00);       // print spacing between characters
   for(i=3; i; i--) {                      // font has 3 bytes per character
     b = pgm_read_byte(&OLED_FONT[ch++]);  // read character byte
     for(j=0; j<4; j++, b >>= 2) sb[j] = OLED_stretch(b);  // stretch 4 times
-    l=4; if(i==2) l=6;                    // calculate x-stretch value
-    for(j=l; j; j--) {                    // write several times (x-direction)
+    j=4; if(i==2) j=6;                    // calculate x-stretch value
+    for(; j; j--) {                       // write several times (x-direction)
       for(k=0; k<4; k++) I2C_write(sb[k]);// the 4 stretched bytes (y-direction)
     }
   } 
