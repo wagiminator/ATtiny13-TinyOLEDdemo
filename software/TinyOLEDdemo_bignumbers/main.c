@@ -1,7 +1,7 @@
-// tinyOLEDsegment - using an I²C OLED as a 8-digit 7-segment display
+// tinyOLEDsegment - using an I²C OLED as an 8-digit 7-segment display
 //                   with an ATtiny13
 //
-// This is just a little demo on how to use an I²C OLED as a 8-digit
+// This is just a little demo on how to use an I²C OLED as an 8-digit
 // 7-segment display with the limited capabilities of an ATtiny13. It
 // implements a 24-bit hexadecimal counter.
 //
@@ -161,7 +161,7 @@ void OLED_printD(uint8_t ch) {
     b = pgm_read_byte(&OLED_FONT[ch++]);  // read character byte
     for(j=0; j<4; j++, b >>= 2) sb[j] = OLED_stretch(b);  // stretch 4 times
     j=4; if(i==2) j=6;                    // calculate x-stretch value
-    for(; j; j--) {                       // write several times (x-direction)
+    while(j--) {                       // write several times (x-direction)
       for(k=0; k<4; k++) I2C_write(sb[k]);// the 4 stretched bytes (y-direction)
     }
   } 
