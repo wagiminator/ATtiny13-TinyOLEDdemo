@@ -44,6 +44,22 @@ The I²C protocol implementation is based on a crude bitbanging method. It was s
 If these restrictions are observed, the implementation works without delays. An SCL HIGH must be at least 600ns long in fast mode. At a maximum clock rate of 1.6 MHz, this is shorter than one clock cycle of the MCU. An SCL LOW must be at least 1300ns long. Since the SDA signal has to be applied anyway, a total of at least three clock cycles pass. Ignoring the ACK signal and disregarding clock stretching also saves a few bytes of flash.
 
 ```c
+// I2C definitions
+#define I2C_SDA         PB0                   // serial data pin
+#define I2C_SCL         PB2                   // serial clock pin
+#define I2C_SDA_HIGH()  DDRB &= ~(1<<I2C_SDA) // release SDA   -> pulled HIGH by resistor
+#define I2C_SDA_LOW()   DDRB |=  (1<<I2C_SDA) // SDA as output -> pulled LOW  by MCU
+#define I2C_SCL_HIGH()  DDRB &= ~(1<<I2C_SCL) // release SCL   -> pulled HIGH by resistor
+#define I2C_SCL_LOW()   DDRB |=  (1<<I2C_SCL) // SCL as output -> pulled LOW  by MCU
+#define I2C_SDA_READ()  PINB &   (1<<I2C_SDA) // read SDA line
+#define I2C_SCL_READ()  PINB &   (1<<I2C_SCL) // read SCL line
+
+// I2C init function
+void I2C_init(void) {
+  DDRB  &= ~((1<<I2C_SDA)|(1<<I2C_SCL));  // pins as input (HIGH-Z) -> lines released
+  PORTB &= ~((1<<I2C_SDA)|(1<<I2C_SCL));  // should be LOW when as ouput
+}
+
 // I2C start transmission
 void I2C_start(uint8_t addr) {
   I2C_SDA_LOW();                          // start condition: SDA goes LOW first
