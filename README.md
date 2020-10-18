@@ -51,8 +51,6 @@ If these restrictions are observed, the implementation works without delays. An 
 #define I2C_SDA_LOW()   DDRB |=  (1<<I2C_SDA) // SDA as output -> pulled LOW  by MCU
 #define I2C_SCL_HIGH()  DDRB &= ~(1<<I2C_SCL) // release SCL   -> pulled HIGH by resistor
 #define I2C_SCL_LOW()   DDRB |=  (1<<I2C_SCL) // SCL as output -> pulled LOW  by MCU
-#define I2C_SDA_READ()  PINB &   (1<<I2C_SDA) // read SDA line
-#define I2C_SCL_READ()  PINB &   (1<<I2C_SCL) // read SCL line
 
 // I2C init function
 void I2C_init(void) {
