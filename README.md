@@ -36,12 +36,14 @@ If the master only writes to the slave device then the data transfer direction i
 
 # I²C Implementation
 The I²C protocol implementation is based on a crude bitbanging method. It was specifically designed for the limited resources of ATtiny10 and ATtiny13, but should work with some other AVRs as well. To make the code as compact as possible, the following restrictions apply:
-- the clock frequency of the MCU must not exceed 1.6 MHz,
+- the clock frequency of the MCU must not exceed 4.8 MHz,
 - the slave device must support fast mode 400 kbps (is mostly the case),
 - the slave device must not stretch the clock (this is usually the case),
 - the acknowledge bit sent by the slave device is ignored.
 
-If these restrictions are observed, the implementation works without delays. An SCL HIGH must be at least 600ns long in fast mode. At a maximum clock rate of 1.6 MHz, this is shorter than one clock cycle of the MCU. An SCL LOW must be at least 1300ns long. Since the SDA signal has to be applied anyway, a total of at least three clock cycles pass. Ignoring the ACK signal and disregarding clock stretching also saves a few bytes of flash.
+If these restrictions are observed, the implementation works almost without delays. An SCL HIGH must be at least 600ns long in Fast Mode. At a maximum clock rate of 4.8 MHz, this is shorter than three clock cycles. An SCL LOW must be at least 1300ns long. Since the SDA signal has to be applied at this point anyway, a total of at least six clock cycles pass. Ignoring the ACK signal and disregarding clock stretching also saves a few bytes of flash. A function for reading from the slave was omitted because it is not necessary here. Overall, the I2C implementation only takes up 56 bytes of flash.
+
+A big thank you at this point goes to Ralph Doncaster (nerdralph) for his optimization tips. He also pointed out that the SSD1306 can be controlled much faster than specified. Therefore an MCU clock rate of 9.6 MHz is also possible in this case.
 
 ```c
 // I2C definitions
@@ -74,19 +76,95 @@ void I2C_stop(void) {
 
 // I2C transmit one data byte to the slave, ignore ACK bit, no clock stretching allowed
 void I2C_write(uint8_t data) {
-  for(uint8_t i = 8; i; i--, data<<=1) {  // transmit 8 bits, MSB first
+  for(uint8_t i = 8; i; i--) {            // transmit 8 bits, MSB first
     I2C_SDA_LOW();                        // SDA LOW for now (saves some flash this way)
     if (data & 0x80) I2C_SDA_HIGH();      // SDA HIGH if bit is 1
     I2C_SCL_HIGH();                       // clock HIGH -> slave reads the bit
+    data<<=1;                             // shift left data byte, acts also as a delay
     I2C_SCL_LOW();                        // clock LOW again
   }
   I2C_SDA_HIGH();                         // release SDA for ACK bit of slave
   I2C_SCL_HIGH();                         // 9th clock pulse is for the ACK bit
-  I2C_SCL_LOW();                          // but ACK bit is ignored
+  asm("nop");                             // ACK bit is ignored, just a delay
+  I2C_SCL_LOW();                          // clock LOW again
 }
 ```
 
 Don't forget the pull-up resistors on the SDA and SCL lines! Many modules, such as the SSD1306 OLED module, have already integrated them.
 
 # SSD1306 OLED
-The functions for the OLED are adapted to the SSD1306 128x32 OLED module, but they can easily be modified to be used for other modules. In order to save resources, only the basic functionalities are implemented.  
+The functions for the OLED are adapted to the SSD1306 128x32 OLED module, but they can easily be modified to be used for other modules. In order to save resources, only the basic functionalities are implemented.
+
+```c
+// OLED definitions
+#define OLED_ADDR       0x78        // OLED write address
+#define OLED_CMD_MODE   0x00        // set command mode
+#define OLED_DAT_MODE   0x40        // set data mode
+#define OLED_INIT_LEN   16          // 16: no screen flip, 18: screen flip
+
+// OLED init settings
+const uint8_t OLED_INIT_CMD[] PROGMEM = {
+  0xA8, 0x1F,                       // set multiplex (HEIGHT-1): 0x1F for 128x32, 0x3F for 128x64 
+  0x22, 0x00, 0x03,                 // set min and max page
+  0x20, 0x00,                       // set horizontal memory addressing mode
+  0xDA, 0x02,                       // set COM pins hardware configuration to sequential
+  0xDB, 0x40,                       // set vcom detect 
+  0xD9, 0xF1,                       // set pre-charge period
+  0x8D, 0x14,                       // enable charge pump
+  0xAF,                             // switch on OLED
+  0xA1, 0xC8                        // flip the screen
+};
+
+// standard ASCII 5x8 font
+const uint8_t OLED_FONT[] PROGMEM = {
+  // not shown here
+};
+
+// OLED init function
+void OLED_init(void) {
+  I2C_init();                       // initialize I2C first
+  I2C_start(OLED_ADDR);             // start transmission to OLED
+  I2C_write(OLED_CMD_MODE);         // set command mode
+  for (uint8_t i = 0; i < OLED_INIT_LEN; i++) I2C_write(pgm_read_byte(&OLED_INIT_CMD[i])); // send the command bytes
+  I2C_stop();                       // stop transmission
+}
+
+// OLED print a character
+void OLED_printC(char ch) {
+  uint16_t offset = ch - 32;        // calculate position of character in font array
+  offset += offset << 2;            // -> offset = (ch - 32) * 5
+  I2C_write(0x00);                  // print spacing between characters
+  for(uint8_t i=5; i; i--) I2C_write(pgm_read_byte(&OLED_FONT[offset++])); // print character
+}
+
+// OLED print a string from program memory
+void OLED_printP(const char* p) {
+  I2C_start(OLED_ADDR);             // start transmission to OLED
+  I2C_write(OLED_DAT_MODE);         // set data mode
+  char ch = pgm_read_byte(p);       // read first character from program memory
+  while (ch != 0) {                 // repeat until string terminator
+    OLED_printC(ch);                // print character on OLED
+    ch = pgm_read_byte(++p);        // read next character
+  }
+  I2C_stop();                       // stop transmission
+}
+
+// OLED set the cursor
+void OLED_cursor(uint8_t xpos, uint8_t ypos) {
+  I2C_start(OLED_ADDR);             // start transmission to OLED
+  I2C_write(OLED_CMD_MODE);         // set command mode
+  I2C_write(xpos & 0x0F);           // set low nibble of start column
+  I2C_write(0x10 | (xpos >> 4));    // set high nibble of start column
+  I2C_write(0xB0 | (ypos & 0x07));  // set start page
+  I2C_stop();                       // stop transmission
+}
+
+// OLED clear screen
+void OLED_clear(void) {
+  OLED_cursor(0, 0);                // set cursor at upper left corner
+  I2C_start(OLED_ADDR);             // start transmission to OLED
+  I2C_write(OLED_DAT_MODE);         // set data mode
+  for(uint16_t i=512; i; i--) I2C_write(0x00); // clear the screen
+  I2C_stop();                       // stop transmission
+}
+```

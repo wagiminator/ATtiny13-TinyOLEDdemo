@@ -8,17 +8,17 @@
 
 # Microcontroller Options
 DEVICE  = attiny13
-CLOCK   = 1200000
+CLOCK   = 9600000
 PROGRMR = usbasp
-LFUSE   = 0x2a
-HFUSE   = 0xfb
+LFUSE   = 0x3a
+HFUSE   = 0xff
 
 # Objects
 OBJECTS = main.o
 
 # Commands
 AVRDUDE = avrdude -c $(PROGRMR) -p $(DEVICE)
-COMPILE = avr-gcc -Wall -Os -mmcu=$(DEVICE) -DF_CPU=$(CLOCK) -DDEBUG_LEVEL=0
+COMPILE = avr-gcc -Wall -Os -flto -mmcu=$(DEVICE) -DF_CPU=$(CLOCK) -DDEBUG_LEVEL=0
 CLEAN   = rm -f main.lst main.obj main.cof main.list main.map main.eep.hex *.o main.s
 
 # Symbolic Targets

@@ -7,10 +7,23 @@
 // It was specifically designed for the limited resources of ATtiny10 and
 // ATtiny13, but should work with some other AVRs as well.
 // To make the code as compact as possible, the following restrictions apply:
-// - the clock frequency of the MCU must not exceed 1.6 MHz,
+// - the clock frequency of the MCU must not exceed 4.8 MHz,
 // - the slave device must support fast mode 400 kbps (is mostly the case),
 // - the slave device must not stretch the clock (this is usually the case),
 // - the acknowledge bit sent by the slave device is ignored.
+// If these restrictions are observed, the implementation works almost without
+// delays. An SCL HIGH must be at least 600ns long in Fast Mode. At a maximum
+// clock rate of 4.8 MHz, this is shorter than three clock cycles. An SCL LOW
+// must be at least 1300ns long. Since the SDA signal has to be applied anyway,
+// a total of at least six clock cycles pass. Ignoring the ACK signal and
+// disregarding clock stretching also saves a few bytes of flash. A function
+// for reading from the slave was omitted because it is not necessary here.
+// Overall, the I2C implementation only takes up 56 bytes of flash.
+//
+// Ralph Doncaster (nerdralph) pointed out that the SSD1306 can be controlled
+// much faster than specified. Therefore an MCU clock rate of 9.6 MHz is also
+// possible in this case.
+//
 // Don't forget the pull-up resistors on the SDA and SCL lines! Many modules,
 // such as the SSD1306 OLED module, have already integrated them.
 //
@@ -33,10 +46,13 @@
 //                   +----+  
 //
 // Controller:  ATtiny13
-// Clockspeed:  1.2 MHz internal
+// Clockspeed:  9.6 MHz internal
 //
 // Font used in this demo was adapted from Neven Boyanov and Stephen Denne.
-// (https://github.com/datacute/Tiny4kOLED)
+// ( https://github.com/datacute/Tiny4kOLED )
+//
+// A big thank you to Ralph Doncaster (nerdralph) for his optimization tips.
+// ( https://nerdralph.blogspot.com/ , https://github.com/nerdralph )
 //
 // 2020 by Stefan Wagner 
 // Project Files (EasyEDA): https://easyeda.com/wagiminator
@@ -56,8 +72,6 @@
 #define I2C_SDA_LOW()   DDRB |=  (1<<I2C_SDA) // SDA as output -> pulled LOW  by MCU
 #define I2C_SCL_HIGH()  DDRB &= ~(1<<I2C_SCL) // release SCL   -> pulled HIGH by resistor
 #define I2C_SCL_LOW()   DDRB |=  (1<<I2C_SCL) // SCL as output -> pulled LOW  by MCU
-#define I2C_SDA_READ()  PINB &   (1<<I2C_SDA) // read SDA line
-#define I2C_SCL_READ()  PINB &   (1<<I2C_SCL) // read SCL line
 
 // OLED definitions
 #define OLED_ADDR       0x78                  // OLED write address
@@ -162,15 +176,17 @@ void I2C_init(void) {
 
 // I2C transmit one data byte to the slave, ignore ACK bit, no clock stretching allowed
 void I2C_write(uint8_t data) {
-  for(uint8_t i = 8; i; i--, data<<=1) {  // transmit 8 bits, MSB first
+  for(uint8_t i = 8; i; i--) {            // transmit 8 bits, MSB first
     I2C_SDA_LOW();                        // SDA LOW for now (saves some flash this way)
     if (data & 0x80) I2C_SDA_HIGH();      // SDA HIGH if bit is 1
     I2C_SCL_HIGH();                       // clock HIGH -> slave reads the bit
+    data<<=1;                             // shift left data byte, acts also as a delay
     I2C_SCL_LOW();                        // clock LOW again
   }
   I2C_SDA_HIGH();                         // release SDA for ACK bit of slave
   I2C_SCL_HIGH();                         // 9th clock pulse is for the ACK bit
-  I2C_SCL_LOW();                          // but ACK bit is ignored
+  asm("nop");                             // ACK bit is ignored, just a delay
+  I2C_SCL_LOW();                          // clock LOW again
 }
 
 // I2C start transmission
