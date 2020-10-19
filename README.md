@@ -92,6 +92,10 @@ void I2C_write(uint8_t data) {
 
 Don't forget the pull-up resistors on the SDA and SCL lines! Many modules, such as the SSD1306 OLED module, have already integrated them.
 
+Here is the result at a clock rate of 4.8 MHz. It doesn't quite meet the specification, but so far it works without any problems.
+
+![I2C@4.8MHz.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/I2C@4.8MHz.jpg)
+
 # SSD1306 OLED
 The functions for the OLED are adapted to the SSD1306 128x32 OLED module, but they can easily be modified to be used for other modules. In order to save resources, only the basic functionalities are implemented.
 
