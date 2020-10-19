@@ -60,6 +60,8 @@
 // License: http://creativecommons.org/licenses/by-sa/3.0/
 
 
+#define __DELAY_BACKWARD_COMPATIBLE__ 1       // less delay accuracy saves 16 bytes flash
+
 // libraries
 #include <avr/io.h>
 #include <avr/pgmspace.h>
