@@ -41,7 +41,7 @@ The I²C protocol implementation is based on a crude bitbanging method. It was s
 - the slave device must not stretch the clock (this is usually the case),
 - the acknowledge bit sent by the slave device is ignored.
 
-If these restrictions are observed, the implementation works almost without delays. An SCL HIGH must be at least 600ns long in Fast Mode. At a maximum clock rate of 4.8 MHz, this is shorter than three clock cycles. An SCL LOW must be at least 1300ns long. Since the SDA signal has to be applied at this point anyway, a total of at least six clock cycles pass. Ignoring the ACK signal and disregarding clock stretching also saves a few bytes of flash. A function for reading from the slave was omitted because it is not necessary here. Overall, the I2C implementation only takes up **56 bytes of flash**.
+If these restrictions are observed, the implementation works almost without delays. An SCL HIGH must be at least 600ns long in Fast Mode. At a maximum clock rate of 4.8 MHz, this is shorter than three clock cycles. An SCL LOW must be at least 1300ns long. Since the SDA signal has to be applied at this point anyway, a total of at least six clock cycles pass. Ignoring the ACK signal and disregarding clock stretching also saves a few bytes of flash. A function for reading from the slave was omitted because it is not necessary here. Overall, the I2C implementation only takes up **56 bytes** of flash.
 
 A big thank you at this point goes to Ralph Doncaster (nerdralph) for his optimization tips. He also pointed out that the SSD1306 can be controlled much faster than specified. Therefore an MCU clock rate of 9.6 MHz is also possible in this case.
 
@@ -99,24 +99,28 @@ Here is the result at a clock rate of 4.8 MHz. It doesn't quite meet the specifi
 # SSD1306 OLED
 The functions for the OLED are adapted to the SSD1306 128x32 OLED module, but they can easily be modified to be used for other modules. In order to save resources, only the basic functionalities are implemented.
 
+Every communication begins with the transmission of the 7-bit address and the READ / WRITE bit. Since the OLED is only used for writing, the corresponding byte is always 0x78. The following byte that is sent is the command byte. It determines whether the following bytes are commands or data for the video RAM. If this byte is 0x00, the SSD1306 is switched to command mode, if it is 0x40, it is switched to data mode. You can find a list of all commands in the data sheet.
+
+Before the OLED can be used, it must be initialized using a sequence of commands. This sequence is located in the OLED_INIT_CMD [] array, which is stored in the program memory.
+
+The character set is stored as an array in the program memory: OLED_FONT []. A character set can very quickly occupy large parts of the memory, in the case of the OLED text example it is **320 bytes**. In real world applications it therefore makes sense to restrict yourself to only those characters that are actually used. You can also use smaller character sizes than the 5x8 pixels used in this example.
+
 ```c
 // OLED definitions
 #define OLED_ADDR       0x78        // OLED write address
 #define OLED_CMD_MODE   0x00        // set command mode
 #define OLED_DAT_MODE   0x40        // set data mode
-#define OLED_INIT_LEN   16          // 16: no screen flip, 18: screen flip
+#define OLED_INIT_LEN   12          // 12: no screen flip, 14: screen flip
 
 // OLED init settings
 const uint8_t OLED_INIT_CMD[] PROGMEM = {
-  0xA8, 0x1F,                       // set multiplex (HEIGHT-1): 0x1F for 128x32, 0x3F for 128x64 
-  0x22, 0x00, 0x03,                 // set min and max page
-  0x20, 0x00,                       // set horizontal memory addressing mode
-  0xDA, 0x02,                       // set COM pins hardware configuration to sequential
-  0xDB, 0x40,                       // set vcom detect 
-  0xD9, 0xF1,                       // set pre-charge period
-  0x8D, 0x14,                       // enable charge pump
-  0xAF,                             // switch on OLED
-  0xA1, 0xC8                        // flip the screen
+  0xA8, 0x1F,       // set multiplex (HEIGHT-1): 0x1F for 128x32, 0x3F for 128x64 
+  0x22, 0x00, 0x03, // set min and max page
+  0x20, 0x00,       // set horizontal memory addressing mode
+  0xDA, 0x02,       // set COM pins hardware configuration to sequential
+  0x8D, 0x14,       // enable charge pump
+  0xAF,             // switch on OLED
+  0xA1, 0xC8        // flip the screen
 };
 
 // standard ASCII 5x8 font
@@ -132,7 +136,20 @@ void OLED_init(void) {
   for (uint8_t i = 0; i < OLED_INIT_LEN; i++) I2C_write(pgm_read_byte(&OLED_INIT_CMD[i])); // send the command bytes
   I2C_stop();                       // stop transmission
 }
+```
 
+To write data into the video RAM of the SSD1306, the control byte 0x40 is first transmitted after the address. Any number of data bytes can then be sent. In horizontal addressing mode (this was set in the initial command sequence) the column address pointer is increased automatically by 1. If the column address pointer reaches column end address, the column address pointer is reset to column start address and page address pointer is increased by 1. When both column and page address pointers reach the end address, the pointers are reset to column start address and page start address.
+
+![SSD1306_RAM.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/SSD1306_RAM.jpg)
+![SSD1306_horizontal.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/SSD1306_horizontal.jpg)
+
+A simple example of this is the OLED_clear function. 512 zeros are written into the video RAM to clear the screen. The pointer is then back in its starting position. With the OLED_cursor function, page and column pointers can be set directly. This corresponds to the cursor position on the screen. Note that due to the arrangement of the video memory, the vertical position of the cursor is only possible page by page, i.e. every 8 pixels.
+
+The OLED_printP function writes a string from the program memory starting at the current cursor position on the screen. It uses the OLED_printC function, which writes a single character from the character set onto the display.
+
+Without the character set, the basic functions shown here require **242 bytes** of Flash.
+
+```c
 // OLED print a character
 void OLED_printC(char ch) {
   uint16_t offset = ch - 32;        // calculate position of character in font array
@@ -172,3 +189,9 @@ void OLED_clear(void) {
   I2C_stop();                       // stop transmission
 }
 ```
+
+# References, Links and Notes
+1. Good description of the I2C specification: https://i2c.info/i2c-bus-specification
+2. Complete I2C Bus Specification and User Manual: http://www.nxp.com/documents/user_manual/UM10204.pdf
+3. SSD1306 Datasheet: https://cdn-shop.adafruit.com/datasheets/SSD1306.pdf
+4. Nerd Ralph's Blog: https://nerdralph.blogspot.com/

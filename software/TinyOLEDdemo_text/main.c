@@ -77,8 +77,7 @@
 #define OLED_ADDR       0x78                  // OLED write address
 #define OLED_CMD_MODE   0x00                  // set command mode
 #define OLED_DAT_MODE   0x40                  // set data mode
-#define OLED_HEIGHT     32                    // display height (32 or 64 pixels)
-#define OLED_INIT_LEN   16                    // 16: no screen flip, 18: screen flip
+#define OLED_INIT_LEN   12                    // 12: no screen flip, 14: screen flip
 
 // OLED init settings
 const uint8_t OLED_INIT_CMD[] PROGMEM = {
@@ -86,8 +85,6 @@ const uint8_t OLED_INIT_CMD[] PROGMEM = {
   0x22, 0x00, 0x03, // set min and max page
   0x20, 0x00,       // set horizontal memory addressing mode
   0xDA, 0x02,       // set COM pins hardware configuration to sequential
-  0xDB, 0x40,       // set vcom detect 
-  0xD9, 0xF1,       // set pre-charge period
   0x8D, 0x14,       // enable charge pump
   0xAF,             // switch on OLED
   0xA1, 0xC8        // flip the screen
