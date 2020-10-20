@@ -132,12 +132,12 @@ void OLED_init(void) {
 ```
 
 ## Accessing the Video RAM
-To write data into the video RAM of the SSD1306, the control byte 0x40 is first transmitted after the address. Any number of data bytes can then be sent. In horizontal addressing mode (this was set in the initial command sequence) the column address pointer is increased automatically by 1. If the column address pointer reaches column end address, the column address pointer is reset to column start address and page address pointer is increased by 1. When both column and page address pointers reach the end address, the pointers are reset to column start address and page start address.
+To write data into the video RAM of the SSD1306, the control byte 0x40 is first transmitted after the address. Any number of data bytes can then be sent. In horizontal addressing mode (this was set in the initial command sequence) the column address pointer is increased automatically by 1. If the column address pointer reaches column end address, the column address pointer is reset to column start address and page address pointer is increased by 1. When both column and page address pointers reach the end address, the pointers are reset to column start address and page start address. Note that only Page0 to Page3 are used for the 128x32 pixel OLED in this example.
 
 ![SSD1306_RAM.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/SSD1306_RAM.jpg)
 ![SSD1306_horizontal.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/SSD1306_horizontal.jpg)
 
-A simple example of this is the OLED_clear function. 512 zeros are written into the video RAM to clear the screen. The pointer is then back in its starting position. With the OLED_cursor function, page and column pointers can be set directly. This corresponds to the cursor position on the screen. Note that due to the arrangement of the video memory, the vertical position of the cursor is only possible page by page, i.e. every 8 pixels.
+A simple example of this is the OLED_clear function. 128 x 4 = 512 zeros are written into the video RAM to clear the screen. The pointer is then back in its starting position. With the OLED_cursor function, page and column pointers can be set directly. This corresponds to the cursor position on the screen. Note that due to the arrangement of the video memory, the vertical position of the cursor is only possible page by page, i.e. every 8 pixels.
 
 ```c
 // OLED clear screen
