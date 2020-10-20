@@ -5,7 +5,10 @@ This is just a little demo on how to use an I²C OLED with the limited capabilit
 ![pic2.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/TinyOLEDdemo_pic2.jpg)
 ![pic3.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/TinyOLEDdemo_pic3.jpg)
 
-# I²C Protocol Specification
+# I²C Bus, Protocol and Implementation
+I²C (Inter-Integrated Circuit) is a serial protocol to connect low-speed devices. It uses only two wires: SCL (serial clock) and SDA (serial data). The I²C bus is a multi master / slave bus. This means that there is at least one I²C master and also at least one I²C slave. The master selects a slave using its slave address, which must be unique within a bus. A data transfer can only be initiated by an I²C master. The slave always remains passive and only listens to the slave address and compares it with its own slave address. Only when it recognizes its slave address does the slave actively intervene in the bus process.
+
+## I²C Protocol Specification
 Refer to: https://i2c.info/i2c-bus-specification
 
 Both signals (SCL and SDA) are bidirectional. They are connected via resistors to a positive power supply voltage. This means that when the bus is free, both lines are high. All devices on the bus must have open-collector or open-drain pins. Activating the line means pulling it down (wired AND).
@@ -14,15 +17,15 @@ For each clock pulse one bit of data is transferred. The SDA signal can only cha
 
 ![bit-transfer.gif](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/i2c-bit-transfer.gif)
 
-Each I2C command initiated by master device starts with a START condition and ends with a STOP condition. For both conditions SCL has to be high. A high to low transition of SDA is considered as START and a low to high transition as STOP.
+Each I²C command initiated by master device starts with a START condition and ends with a STOP condition. For both conditions SCL has to be high. A high to low transition of SDA is considered as START and a low to high transition as STOP.
 
 ![start-stop.gif](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/i2c-start-stop.gif)
 
-After the Start condition the bus is considered as busy and can be used by another master only after a Stop condition is detected. Data on the I2C bus is transferred in 8-bit packets (bytes). There is no limitation on the number of bytes, however, each byte must be followed by an Acknowledge bit. This bit signals whether the device is ready to proceed with the next byte. For all data bits including the Acknowledge bit, the master must generate clock pulses. If the slave device does not acknowledges transfer this means that there is no more data or the device is not ready for the transfer yet. The master device must either generate Stop or Repeated Start condition.
+After the Start condition the bus is considered as busy and can be used by another master only after a Stop condition is detected. Data on the I²C bus is transferred in 8-bit packets (bytes). There is no limitation on the number of bytes, however, each byte must be followed by an Acknowledge bit. This bit signals whether the device is ready to proceed with the next byte. For all data bits including the Acknowledge bit, the master must generate clock pulses. If the slave device does not acknowledges transfer this means that there is no more data or the device is not ready for the transfer yet. The master device must either generate Stop or Repeated Start condition.
 
 ![acknowlegde.gif](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/i2c-acknowledge.gif)
 
-Each slave device on the bus should have a unique 7-bit address. The communication starts with the Start condition, followed by the 7-bit slave address and the data direction bit. If this bit is 0 then the master will write to the slave device. Otherwise, if the data direction bit is 1, the master will read from slave device. After the slave address and the data direction is sent, the master can continue with reading or writing. The communication is ended with the Stop condition which also signals that the I2C bus is free. If the master needs to communicate with other slaves it can generate a repeated start with another slave address without generation Stop condition. All the bytes are transferred with the MSB bit shifted first.
+Each slave device on the bus should have a unique 7-bit address. The communication starts with the Start condition, followed by the 7-bit slave address and the data direction bit. If this bit is 0 then the master will write to the slave device. Otherwise, if the data direction bit is 1, the master will read from slave device. After the slave address and the data direction is sent, the master can continue with reading or writing. The communication is ended with the Stop condition which also signals that the I²C bus is free. If the master needs to communicate with other slaves it can generate a repeated start with another slave address without generation Stop condition. All the bytes are transferred with the MSB bit shifted first.
 
 ![command.gif](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/i2c-command.gif)
 
@@ -30,14 +33,14 @@ If the master only writes to the slave device then the data transfer direction i
 
 ![address.gif](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/i2c-7-bit-address-writing.gif)
 
-# I²C Implementation
+## I²C Implementation
 The I²C protocol implementation is based on a crude bitbanging method. It was specifically designed for the limited resources of ATtiny10 and ATtiny13, but should work with some other AVRs as well. To make the code as compact as possible, the following restrictions apply:
 - the clock frequency of the MCU must not exceed 4.8 MHz,
 - the slave device must support fast mode 400 kbps (is mostly the case),
 - the slave device must not stretch the clock (this is usually the case),
 - the acknowledge bit sent by the slave device is ignored.
 
-If these restrictions are observed, the implementation works almost without delays. An SCL HIGH must be at least 600ns long in Fast Mode. At a maximum clock rate of 4.8 MHz, this is shorter than three clock cycles. An SCL LOW must be at least 1300ns long. Since the SDA signal has to be applied at this point anyway, a total of at least six clock cycles pass. Ignoring the ACK signal and disregarding clock stretching also saves a few bytes of flash. A function for reading from the slave was omitted because it is not necessary here. Overall, the I2C implementation only takes up **56 bytes** of flash.
+If these restrictions are observed, the implementation works almost without delays. An SCL HIGH must be at least 600ns long in Fast Mode. At a maximum clock rate of 4.8 MHz, this is shorter than three clock cycles. An SCL LOW must be at least 1300ns long. Since the SDA signal has to be applied at this point anyway, a total of at least six clock cycles pass. Ignoring the ACK signal and disregarding clock stretching also saves a few bytes of flash. A function for reading from the slave was omitted because it is not necessary here. Overall, the I²C implementation only takes up **56 bytes** of flash.
 
 A big thank you at this point goes to Ralph Doncaster (nerdralph) for his optimization tips. He also pointed out that the SSD1306 can be controlled much faster than specified. Therefore an MCU clock rate of 9.6 MHz is also possible in this case.
 
@@ -92,14 +95,13 @@ Here is the result at a clock rate of 4.8 MHz. It doesn't quite meet the specifi
 
 ![I2C@4.8MHz.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/I2C@4.8MHz.jpg)
 
-# SSD1306 OLED
+# SSD1306 128x32 Pixels OLED
 The functions for the OLED are adapted to the SSD1306 128x32 OLED module, but they can easily be modified to be used for other modules. In order to save resources, only the basic functionalities are implemented.
 
+## Initializing and Communicating with the SSD1306
 Every communication begins with the transmission of the 7-bit address and the READ / WRITE bit. Since the OLED is only used for writing, the corresponding byte is always 0x78. The following byte that is sent is the command byte. It determines whether the following bytes are commands or data for the video RAM. If this byte is 0x00, the SSD1306 is switched to command mode, if it is 0x40, it is switched to data mode. You can find a list of all commands in the data sheet.
 
 Before the OLED can be used, it must be initialized using a sequence of commands. This sequence is located in the OLED_INIT_CMD [] array, which is stored in the program memory.
-
-The character set is stored as an array in the program memory: OLED_FONT []. A character set can very quickly occupy large parts of the memory, in the case of the OLED text example it is **320 bytes**. In real world applications it therefore makes sense to restrict yourself to only those characters that are actually used. You can also use smaller character sizes than the 5x8 pixels used in this example.
 
 ```c
 // OLED definitions
@@ -119,11 +121,6 @@ const uint8_t OLED_INIT_CMD[] PROGMEM = {
   0xA1, 0xC8        // flip the screen
 };
 
-// standard ASCII 5x8 font
-const uint8_t OLED_FONT[] PROGMEM = {
-  // not shown here
-};
-
 // OLED init function
 void OLED_init(void) {
   I2C_init();                       // initialize I2C first
@@ -134,6 +131,7 @@ void OLED_init(void) {
 }
 ```
 
+## Accessing the Video RAM
 To write data into the video RAM of the SSD1306, the control byte 0x40 is first transmitted after the address. Any number of data bytes can then be sent. In horizontal addressing mode (this was set in the initial command sequence) the column address pointer is increased automatically by 1. If the column address pointer reaches column end address, the column address pointer is reset to column start address and page address pointer is increased by 1. When both column and page address pointers reach the end address, the pointers are reset to column start address and page start address.
 
 ![SSD1306_RAM.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/SSD1306_RAM.jpg)
@@ -141,11 +139,45 @@ To write data into the video RAM of the SSD1306, the control byte 0x40 is first 
 
 A simple example of this is the OLED_clear function. 512 zeros are written into the video RAM to clear the screen. The pointer is then back in its starting position. With the OLED_cursor function, page and column pointers can be set directly. This corresponds to the cursor position on the screen. Note that due to the arrangement of the video memory, the vertical position of the cursor is only possible page by page, i.e. every 8 pixels.
 
+```c
+// OLED clear screen
+void OLED_clear(void) {
+  OLED_cursor(0, 0);                // set cursor at upper left corner
+  I2C_start(OLED_ADDR);             // start transmission to OLED
+  I2C_write(OLED_DAT_MODE);         // set data mode
+  for(uint16_t i=512; i; i--) I2C_write(0x00); // clear the screen
+  I2C_stop();                       // stop transmission
+}
+
+// OLED set the cursor
+void OLED_cursor(uint8_t xpos, uint8_t ypos) {
+  I2C_start(OLED_ADDR);             // start transmission to OLED
+  I2C_write(OLED_CMD_MODE);         // set command mode
+  I2C_write(xpos & 0x0F);           // set low nibble of start column
+  I2C_write(0x10 | (xpos >> 4));    // set high nibble of start column
+  I2C_write(0xB0 | (ypos & 0x07));  // set start page
+  I2C_stop();                       // stop transmission
+}
+```
+
+## Writing Text on the OLED
+The character set is stored as an array in the program memory: OLED_FONT []. A character set can very quickly occupy large parts of the memory, in the case of the OLED text example it is **320 bytes**. In real world applications it therefore makes sense to restrict yourself to only those characters that are actually used. You can also use smaller character sizes than the 5x8 pixels used in this example.
+
 The OLED_printP function writes a string from the program memory starting at the current cursor position on the screen. It uses the OLED_printC function, which writes a single character from the character set onto the display.
 
-Without the character set, the basic functions shown here require **242 bytes** of Flash.
+Without the character set, all the basic functions shown here require **242 bytes** of Flash.
 
 ```c
+// standard ASCII 5x8 font
+const uint8_t OLED_FONT[] PROGMEM = {
+  0x00, 0x00, 0x00, 0x00, 0x00, //   0 
+  0x00, 0x00, 0x2f, 0x00, 0x00, // ! 1 
+  0x00, 0x07, 0x00, 0x07, 0x00, // " 2 
+  // [...]
+  0x04, 0x02, 0x01, 0x02, 0x04, // ^ 62
+  0x40, 0x40, 0x40, 0x40, 0x40  // _ 63
+};
+
 // OLED print a character
 void OLED_printC(char ch) {
   uint16_t offset = ch - 32;        // calculate position of character in font array
@@ -163,25 +195,6 @@ void OLED_printP(const char* p) {
     OLED_printC(ch);                // print character on OLED
     ch = pgm_read_byte(++p);        // read next character
   }
-  I2C_stop();                       // stop transmission
-}
-
-// OLED set the cursor
-void OLED_cursor(uint8_t xpos, uint8_t ypos) {
-  I2C_start(OLED_ADDR);             // start transmission to OLED
-  I2C_write(OLED_CMD_MODE);         // set command mode
-  I2C_write(xpos & 0x0F);           // set low nibble of start column
-  I2C_write(0x10 | (xpos >> 4));    // set high nibble of start column
-  I2C_write(0xB0 | (ypos & 0x07));  // set start page
-  I2C_stop();                       // stop transmission
-}
-
-// OLED clear screen
-void OLED_clear(void) {
-  OLED_cursor(0, 0);                // set cursor at upper left corner
-  I2C_start(OLED_ADDR);             // start transmission to OLED
-  I2C_write(OLED_DAT_MODE);         // set data mode
-  for(uint16_t i=512; i; i--) I2C_write(0x00); // clear the screen
   I2C_stop();                       // stop transmission
 }
 ```
