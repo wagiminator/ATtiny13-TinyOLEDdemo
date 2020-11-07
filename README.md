@@ -95,7 +95,7 @@ Here is the result at a clock rate of 4.8 MHz. It doesn't quite meet the specifi
 
 ![I2C@4.8MHz.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/I2C@4.8MHz.jpg)
 
-# SSD1306 128x32 Pixels OLED
+# SSD1306 128x32 Pixels OLED Display
 The functions for the OLED are adapted to the SSD1306 128x32 OLED module, but they can easily be modified to be used for other modules. In order to save resources, only the basic functionalities are implemented.
 
 ## Initializing and Communicating with the SSD1306
@@ -160,7 +160,7 @@ void OLED_cursor(uint8_t xpos, uint8_t ypos) {
 }
 ```
 
-## Writing Text on the OLED
+## Writing Text on the OLED Display
 The character set is stored as an array in the program memory: OLED_FONT []. A character set can very quickly occupy large parts of the memory, in the case of the OLED text example it is **320 bytes**. In real world applications it therefore makes sense to restrict yourself to only those characters that are actually used. You can also use smaller character sizes than the 5x8 pixels used in this example.
 
 The OLED_printP function writes a string from the program memory starting at the current cursor position on the screen. It uses the OLED_printC function, which writes a single character from the character set onto the display.
@@ -196,6 +196,70 @@ void OLED_printP(const char* p) {
     ch = pgm_read_byte(++p);        // read next character
   }
   I2C_stop();                       // stop transmission
+}
+```
+
+## Writing Big Numbers on the OLED Display
+In the second demo, large numbers are shown on the display. A simple 3x8 pixel font is used for this, which is upscaled in software to a size of 16x32 pixels for each character. This means that a total of 8 characters can be shown on the OLED display. In order to save the functions for clearing the screen and for setting the cursor, the entire video memory is always written from an 8-byte buffer which contains the 8 characters. To make things even easier, this time the vertical addressing mode was used. Note again that only Page0 to Page3 are used for the 128x32 pixel OLED in this example.
+
+![SSD1306_vertical.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/SSD1306_vertical.jpg)
+
+```c
+#define OLED_INIT_LEN   15                      // 15: no screen flip, 17: screen flip
+uint8_t buffer[8] = {0, 0, 17, 0, 0, 16, 0, 0}; // screen buffer
+
+// OLED init settings
+const uint8_t OLED_INIT_CMD[] PROGMEM = {
+  0xA8, 0x1F,       // set multiplex (HEIGHT-1): 0x1F for 128x32, 0x3F for 128x64 
+  0x22, 0x00, 0x03, // set min and max page
+  0x20, 0x01,       // set vertical memory addressing mode
+  0xDA, 0x02,       // set COM pins hardware configuration to sequential
+  0x8D, 0x14,       // enable charge pump
+  0xAF,             // switch on OLED
+  0x00, 0x10, 0xB0, // set cursor at home position
+  0xA1, 0xC8        // flip the screen
+};
+
+// simple reduced 3x8 font
+const uint8_t OLED_FONT[] PROGMEM = {
+  0x7F, 0x41, 0x7F, // 0  0
+  0x00, 0x00, 0x7F, // 1  1
+  0x79, 0x49, 0x4F, // 2  2
+  // [...]
+  0x08, 0x08, 0x08, // - 18
+  0x00, 0x00, 0x00  //   19
+};
+
+// OLED stretch a part of a byte
+uint8_t OLED_stretch(uint8_t b) {
+  b  = ((b & 2) << 3) | (b & 1);          // split 2 LSB into the nibbles
+  b |= b << 1;                            // double the bits
+  b |= b << 2;                            // double them again = 4 times
+  return b;                               // return the value
+}
+
+// OLED print a big digit
+void OLED_printD(uint8_t ch) {
+  uint8_t i, j, k, b;                     // loop variables
+  uint8_t sb[4];                          // stretched character bytes
+  ch += ch << 1;                          // calculate position of character in font array
+  for(i=8; i; i--) I2C_write(0x00);       // print spacing between characters
+  for(i=3; i; i--) {                      // font has 3 bytes per character
+    b = pgm_read_byte(&OLED_FONT[ch++]);  // read character byte
+    for(j=0; j<4; j++, b >>= 2) sb[j] = OLED_stretch(b);  // stretch 4 times
+    j=4; if(i==2) j=6;                    // calculate x-stretch value
+    while(j--) {                       // write several times (x-direction)
+      for(k=0; k<4; k++) I2C_write(sb[k]);// the 4 stretched bytes (y-direction)
+    }
+  } 
+}
+
+// OLED print buffer
+void OLED_printB(uint8_t *buffer) {
+  I2C_start(OLED_ADDR);                   // start transmission to OLED
+  I2C_write(OLED_DAT_MODE);               // set data mode
+  for(uint8_t i=0; i<8; i++) OLED_printD(buffer[i]);  // print buffer
+  I2C_stop();                             // stop transmission
 }
 ```
 
