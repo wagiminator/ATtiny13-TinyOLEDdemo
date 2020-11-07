@@ -2,8 +2,6 @@
 This is just a little demo on how to use an I²C OLED with the limited capabilities of an ATtiny13.
 
 ![pic1.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/TinyOLEDdemo_pic1.jpg)
-![pic2.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/TinyOLEDdemo_pic2.jpg)
-![pic3.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/TinyOLEDdemo_pic3.jpg)
 
 # I²C Bus, Protocol and Implementation
 I²C (Inter-Integrated Circuit) is a serial protocol to connect low-speed devices. It uses only two wires: SCL (serial clock) and SDA (serial data). The I²C bus is a multi master / slave bus. This means that there is at least one I²C master and also at least one I²C slave. The master selects a slave using its slave address, which must be unique within a bus. A data transfer can only be initiated by an I²C master. The slave always remains passive and only listens to the slave address and compares it with its own slave address. Only when it recognizes its slave address does the slave actively intervene in the bus process.
@@ -199,6 +197,8 @@ void OLED_printP(const char* p) {
 }
 ```
 
+![pic2.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/TinyOLEDdemo_pic2.jpg)
+
 ## Writing Big Numbers on the OLED Display
 In the second demo, large numbers are shown on the display. A simple 3x8 pixel font is used for this, which is upscaled in software to a size of 16x32 pixels for each character. This means that a total of 8 characters can be shown on the OLED display. In order to save the functions for clearing the screen and for setting the cursor, the entire video memory is always written from an 8-byte buffer which contains the 8 characters. To make things even easier, this time the vertical addressing mode was used. Note again that only Page0 to Page3 are used for the 128x32 pixel OLED in this example.
 
@@ -262,6 +262,8 @@ void OLED_printB(uint8_t *buffer) {
   I2C_stop();                             // stop transmission
 }
 ```
+
+![pic3.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/TinyOLEDdemo_pic3.jpg)
 
 # References, Links and Notes
 1. Good description of the I2C specification: https://i2c.info/i2c-bus-specification
