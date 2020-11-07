@@ -248,7 +248,7 @@ void OLED_printD(uint8_t ch) {
     b = pgm_read_byte(&OLED_FONT[ch++]);  // read character byte
     for(j=0; j<4; j++, b >>= 2) sb[j] = OLED_stretch(b);  // stretch 4 times
     j=4; if(i==2) j=6;                    // calculate x-stretch value
-    while(j--) {                       // write several times (x-direction)
+    while(j--) {                          // write several times (x-direction)
       for(k=0; k<4; k++) I2C_write(sb[k]);// the 4 stretched bytes (y-direction)
     }
   } 
