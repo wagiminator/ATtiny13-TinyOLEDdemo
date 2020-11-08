@@ -49,9 +49,6 @@
 // Controller:  ATtiny10
 // Clockspeed:  4 MHz internal
 //
-// Font used in this demo was adapted from Neven Boyanov and Stephen Denne.
-// ( https://github.com/datacute/Tiny4kOLED )
-//
 // A big thank you to Ralph Doncaster (nerdralph) for his optimization tips.
 // ( https://nerdralph.blogspot.com/ , https://github.com/nerdralph )
 //
