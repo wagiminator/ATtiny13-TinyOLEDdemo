@@ -4,6 +4,13 @@ This is just a little demo on how to use an I²C OLED with the limited capabilit
 ![pic1.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/TinyOLEDdemo_pic1.jpg)
 ![pic4.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/TinyOLEDdemo_pic4.jpg)
 
+# Wiring
+Connect the OLED module to the ATtiny13A as shown below. The connections for the ATtiny10 are similar.
+
+![wiring.png](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/TinyOLEDdemo_wiring.png)
+
+Since the I²C implementation is software-based, you can of course also use all other I/O pins. Just change the relevant definitions in the code.
+
 # I²C Bus, Protocol and Implementation
 I²C (Inter-Integrated Circuit) is a serial protocol to connect low-speed devices. It uses only two wires: SCL (serial clock) and SDA (serial data). The I²C bus is a multi master / slave bus. This means that there is at least one I²C master and also at least one I²C slave. The master selects a slave using its slave address, which must be unique within a bus. A data transfer can only be initiated by an I²C master. The slave always remains passive and only listens to the slave address and compares it with its own slave address. Only when it recognizes its slave address does the slave actively intervene in the bus process.
 
