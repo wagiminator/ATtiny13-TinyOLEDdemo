@@ -277,4 +277,6 @@ void OLED_printB(uint8_t *buffer) {
 1. Good description of the I2C specification: https://i2c.info/i2c-bus-specification
 2. Complete I2C Bus Specification and User Manual: http://www.nxp.com/documents/user_manual/UM10204.pdf
 3. SSD1306 Datasheet: https://cdn-shop.adafruit.com/datasheets/SSD1306.pdf
-4. Nerd Ralph's Blog: https://nerdralph.blogspot.com/
+4. ATtiny13A Datasheet: http://ww1.microchip.com/downloads/en/DeviceDoc/doc8126.pdf
+5. ATtiny10 Datasheet: http://ww1.microchip.com/downloads/en/DeviceDoc/atmel-8127-avr-8-bit-microcontroller-attiny4-attiny5-attiny9-attiny10_datasheet.pdf
+6. Nerd Ralph's Blog: https://nerdralph.blogspot.com/
