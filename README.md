@@ -6,7 +6,7 @@ This is just a little demo on how to use an I²C OLED with the limited capabilit
 ![pic5.jpg](https://raw.githubusercontent.com/wagiminator/ATtiny13-TinyOLEDdemo/main/documentation/TinyOLEDdemo_pic5.jpg)
 
 # Wiring
-Connect the OLED module to the ATtiny13A as shown below. The connections for the ATtiny10 are similar. For the ATtiny202 SDA must be connected to PA1 (pin 4) and SCL to PA2 (pin 5).
+Connect the OLED module to the ATtiny13A as shown below. The connections for the ATtiny10 are similar. For the ATtiny202 SDA must be connected to PA1 (pin 4) and SCL (or SCK) to PA2 (pin 5).
 
 ![wiring.png](https://raw.githubusercontent.com/wagiminator/ATtiny13-TinyOLEDdemo/main/documentation/TinyOLEDdemo_wiring.png)
 
@@ -111,21 +111,21 @@ Since the new tinyAVR are equipped with a very easy-to-use hardware module for I
 
 // I2C init function
 void I2C_init(void) {
-	TWI0.MBAUD   = I2C_BAUD;                        // set BAUD rate
-	TWI0.MCTRLA  = TWI_ENABLE_bm;                   // enable TWI
-	TWI0.MSTATUS = TWI_BUSSTATE_IDLE_gc;            // set bus idle
+  TWI0.MBAUD   = I2C_BAUD;                        // set BAUD rate
+  TWI0.MCTRLA  = TWI_ENABLE_bm;                   // enable TWI
+  TWI0.MSTATUS = TWI_BUSSTATE_IDLE_gc;            // set bus idle
 }
 
 // I2C start transmission
 void I2C_start(uint8_t addr) {
-	TWI0.MADDR = addr;                              // send address
+  TWI0.MADDR = addr;                              // send address
 }
 
 // I2C stop transmission
 void I2C_stop(void) {
   while (~TWI0.MSTATUS & TWI_WIF_bm);             // wait for last transfer to complete
-	TWI0.MCTRLB |= TWI_MCMD_STOP_gc;                // send stop condition
-	while (~TWI0.MSTATUS & TWI_BUSSTATE_IDLE_gc);   // wait until bus is idle
+  TWI0.MCTRLB |= TWI_MCMD_STOP_gc;                // send stop condition
+  while (~TWI0.MSTATUS & TWI_BUSSTATE_IDLE_gc);   // wait until bus is idle
 }
 
 // I2C transmit one data byte to the slave, ignore ACK bit
