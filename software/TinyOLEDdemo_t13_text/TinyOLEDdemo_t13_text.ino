@@ -68,18 +68,63 @@
 
 #define __DELAY_BACKWARD_COMPATIBLE__ 1       // less delay accuracy saves 16 bytes flash
 
-// libraries
+// Libraries
 #include <avr/io.h>
 #include <avr/pgmspace.h>
 #include <util/delay.h>
 
-// I2C definitions
+// Pin definitions
 #define I2C_SDA         PB0                   // serial data pin
 #define I2C_SCL         PB2                   // serial clock pin
+
+// -----------------------------------------------------------------------------
+// I2C Master Implementation (Write only)
+// -----------------------------------------------------------------------------
+
+// I2C macros
 #define I2C_SDA_HIGH()  DDRB &= ~(1<<I2C_SDA) // release SDA   -> pulled HIGH by resistor
 #define I2C_SDA_LOW()   DDRB |=  (1<<I2C_SDA) // SDA as output -> pulled LOW  by MCU
 #define I2C_SCL_HIGH()  DDRB &= ~(1<<I2C_SCL) // release SCL   -> pulled HIGH by resistor
 #define I2C_SCL_LOW()   DDRB |=  (1<<I2C_SCL) // SCL as output -> pulled LOW  by MCU
+
+// I2C init function
+void I2C_init(void) {
+  DDRB  &= ~((1<<I2C_SDA)|(1<<I2C_SCL));  // pins as input (HIGH-Z) -> lines released
+  PORTB &= ~((1<<I2C_SDA)|(1<<I2C_SCL));  // should be LOW when as ouput
+}
+
+// I2C transmit one data byte to the slave, ignore ACK bit, no clock stretching allowed
+void I2C_write(uint8_t data) {
+  for(uint8_t i = 8; i; i--) {            // transmit 8 bits, MSB first
+    I2C_SDA_LOW();                        // SDA LOW for now (saves some flash this way)
+    if (data & 0x80) I2C_SDA_HIGH();      // SDA HIGH if bit is 1
+    I2C_SCL_HIGH();                       // clock HIGH -> slave reads the bit
+    data<<=1;                             // shift left data byte, acts also as a delay
+    I2C_SCL_LOW();                        // clock LOW again
+  }
+  I2C_SDA_HIGH();                         // release SDA for ACK bit of slave
+  I2C_SCL_HIGH();                         // 9th clock pulse is for the ACK bit
+  asm("nop");                             // ACK bit is ignored, just a delay
+  I2C_SCL_LOW();                          // clock LOW again
+}
+
+// I2C start transmission
+void I2C_start(uint8_t addr) {
+  I2C_SDA_LOW();                          // start condition: SDA goes LOW first
+  I2C_SCL_LOW();                          // start condition: SCL goes LOW second
+  I2C_write(addr);                        // send slave address
+}
+
+// I2C stop transmission
+void I2C_stop(void) {
+  I2C_SDA_LOW();                          // prepare SDA for LOW to HIGH transition
+  I2C_SCL_HIGH();                         // stop condition: SCL goes HIGH first
+  I2C_SDA_HIGH();                         // stop condition: SDA goes HIGH second
+}
+
+// -----------------------------------------------------------------------------
+// OLED Implementation
+// -----------------------------------------------------------------------------
 
 // OLED definitions
 #define OLED_ADDR       0x78                  // OLED write address
@@ -98,7 +143,7 @@ const uint8_t OLED_INIT_CMD[] PROGMEM = {
   0xA1, 0xC8        // flip the screen
 };
 
-// standard ASCII 5x8 font (adapted from Neven Boyanov and Stephen Denne)
+// Standard ASCII 5x8 font (adapted from Neven Boyanov and Stephen Denne)
 const uint8_t OLED_FONT[] PROGMEM = {
   0x00, 0x00, 0x00, 0x00, 0x00, //   0 
   0x00, 0x00, 0x2f, 0x00, 0x00, // ! 1 
@@ -166,48 +211,6 @@ const uint8_t OLED_FONT[] PROGMEM = {
   0x40, 0x40, 0x40, 0x40, 0x40  // _ 63
 };
 
-// messages to print on OLED
-const char Message1[] PROGMEM = "HELLO WORLD !";
-const char Message2[] PROGMEM = "ATTINY13 GOES OLED !";
-const char Message3[] PROGMEM = "THE QUICK BROWN FOX";
-const char Message4[] PROGMEM = "JUMPS OVER THE LAZY";
-const char Message5[] PROGMEM = "DOG  - (0123456789)";
-
-// I2C init function
-void I2C_init(void) {
-  DDRB  &= ~((1<<I2C_SDA)|(1<<I2C_SCL));  // pins as input (HIGH-Z) -> lines released
-  PORTB &= ~((1<<I2C_SDA)|(1<<I2C_SCL));  // should be LOW when as ouput
-}
-
-// I2C transmit one data byte to the slave, ignore ACK bit, no clock stretching allowed
-void I2C_write(uint8_t data) {
-  for(uint8_t i = 8; i; i--) {            // transmit 8 bits, MSB first
-    I2C_SDA_LOW();                        // SDA LOW for now (saves some flash this way)
-    if (data & 0x80) I2C_SDA_HIGH();      // SDA HIGH if bit is 1
-    I2C_SCL_HIGH();                       // clock HIGH -> slave reads the bit
-    data<<=1;                             // shift left data byte, acts also as a delay
-    I2C_SCL_LOW();                        // clock LOW again
-  }
-  I2C_SDA_HIGH();                         // release SDA for ACK bit of slave
-  I2C_SCL_HIGH();                         // 9th clock pulse is for the ACK bit
-  asm("nop");                             // ACK bit is ignored, just a delay
-  I2C_SCL_LOW();                          // clock LOW again
-}
-
-// I2C start transmission
-void I2C_start(uint8_t addr) {
-  I2C_SDA_LOW();                          // start condition: SDA goes LOW first
-  I2C_SCL_LOW();                          // start condition: SCL goes LOW second
-  I2C_write(addr);                        // send slave address
-}
-
-// I2C stop transmission
-void I2C_stop(void) {
-  I2C_SDA_LOW();                          // prepare SDA for LOW to HIGH transition
-  I2C_SCL_HIGH();                         // stop condition: SCL goes HIGH first
-  I2C_SDA_HIGH();                         // stop condition: SDA goes HIGH second
-}
-
 // OLED init function
 void OLED_init(void) {
   I2C_init();                             // initialize I2C first
@@ -266,10 +269,22 @@ void OLED_clear(void) {
   OLED_shift(0);                          // reset vertical shift
 }
 
-// main function
+// -----------------------------------------------------------------------------
+// Main Function
+// -----------------------------------------------------------------------------
+
+// Messages to print on OLED
+const char Message1[] PROGMEM = "HELLO WORLD !";
+const char Message2[] PROGMEM = "ATTINY13 GOES OLED !";
+const char Message3[] PROGMEM = "THE QUICK BROWN FOX";
+const char Message4[] PROGMEM = "JUMPS OVER THE LAZY";
+const char Message5[] PROGMEM = "DOG  - (0123456789)";
+
 int main(void) {
+  // Setup
   OLED_init();                            // initialize the OLED
 
+  // Loop
   while(1) {                              // loop until forever                         
     // print messages
     OLED_clear();                         // clear screen

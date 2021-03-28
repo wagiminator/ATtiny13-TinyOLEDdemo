@@ -65,59 +65,23 @@
 // License: http://creativecommons.org/licenses/by-sa/3.0/
 
 
-// libraries
+// Libraries
 #include <avr/io.h>
 #include <avr/pgmspace.h>
 
-// I2C definitions
+// Pin definitions
 #define I2C_SDA         PB0                   // serial data pin
 #define I2C_SCL         PB2                   // serial clock pin
+
+// -----------------------------------------------------------------------------
+// I2C Master Implementation (Write only)
+// -----------------------------------------------------------------------------
+
+// I2C macros
 #define I2C_SDA_HIGH()  DDRB &= ~(1<<I2C_SDA) // release SDA   -> pulled HIGH by resistor
 #define I2C_SDA_LOW()   DDRB |=  (1<<I2C_SDA) // SDA as output -> pulled LOW  by MCU
 #define I2C_SCL_HIGH()  DDRB &= ~(1<<I2C_SCL) // release SCL   -> pulled HIGH by resistor
 #define I2C_SCL_LOW()   DDRB |=  (1<<I2C_SCL) // SCL as output -> pulled LOW  by MCU
-
-// OLED definitions
-#define OLED_ADDR       0x78                  // OLED write address
-#define OLED_CMD_MODE   0x00                  // set command mode
-#define OLED_DAT_MODE   0x40                  // set data mode
-#define OLED_INIT_LEN   15                    // 15: no screen flip, 17: screen flip
-
-// OLED init settings
-const uint8_t OLED_INIT_CMD[] PROGMEM = {
-  0xA8, 0x1F,       // set multiplex (HEIGHT-1): 0x1F for 128x32, 0x3F for 128x64 
-  0x22, 0x00, 0x03, // set min and max page
-  0x20, 0x01,       // set vertical memory addressing mode
-  0xDA, 0x02,       // set COM pins hardware configuration to sequential
-  0x8D, 0x14,       // enable charge pump
-  0xAF,             // switch on OLED
-  0x00, 0x10, 0xB0, // set cursor at home position
-  0xA1, 0xC8        // flip the screen
-};
-
-// simple reduced 3x8 font
-const uint8_t OLED_FONT[] PROGMEM = {
-  0x7F, 0x41, 0x7F, // 0  0
-  0x00, 0x00, 0x7F, // 1  1
-  0x79, 0x49, 0x4F, // 2  2
-  0x41, 0x49, 0x7F, // 3  3
-  0x0F, 0x08, 0x7E, // 4  4
-  0x4F, 0x49, 0x79, // 5  5
-  0x7F, 0x49, 0x79, // 6  6
-  0x03, 0x01, 0x7F, // 7  7
-  0x7F, 0x49, 0x7F, // 8  8
-  0x4F, 0x49, 0x7F, // 9  9
-  0x7F, 0x09, 0x7F, // A 10
-  0x7F, 0x48, 0x78, // b 11
-  0x7F, 0x41, 0x63, // C 12
-  0x78, 0x48, 0x7F, // d 13
-  0x7F, 0x49, 0x41, // E 14
-  0x7F, 0x09, 0x01, // F 15
-  0x00, 0x60, 0x00, // . 16
-  0x00, 0x36, 0x00, // : 17
-  0x08, 0x08, 0x08, // - 18
-  0x00, 0x00, 0x00  //   19
-};
 
 // I2C init function
 void I2C_init(void) {
@@ -153,6 +117,52 @@ void I2C_stop(void) {
   I2C_SCL_HIGH();                         // stop condition: SCL goes HIGH first
   I2C_SDA_HIGH();                         // stop condition: SDA goes HIGH second
 }
+
+// -----------------------------------------------------------------------------
+// OLED Implementation
+// -----------------------------------------------------------------------------
+
+// OLED definitions
+#define OLED_ADDR       0x78                  // OLED write address
+#define OLED_CMD_MODE   0x00                  // set command mode
+#define OLED_DAT_MODE   0x40                  // set data mode
+#define OLED_INIT_LEN   15                    // 15: no screen flip, 17: screen flip
+
+// OLED init settings
+const uint8_t OLED_INIT_CMD[] PROGMEM = {
+  0xA8, 0x1F,       // set multiplex (HEIGHT-1): 0x1F for 128x32, 0x3F for 128x64 
+  0x22, 0x00, 0x03, // set min and max page
+  0x20, 0x01,       // set vertical memory addressing mode
+  0xDA, 0x02,       // set COM pins hardware configuration to sequential
+  0x8D, 0x14,       // enable charge pump
+  0xAF,             // switch on OLED
+  0x00, 0x10, 0xB0, // set cursor at home position
+  0xA1, 0xC8        // flip the screen
+};
+
+// Simple reduced 3x8 font
+const uint8_t OLED_FONT[] PROGMEM = {
+  0x7F, 0x41, 0x7F, // 0  0
+  0x00, 0x00, 0x7F, // 1  1
+  0x79, 0x49, 0x4F, // 2  2
+  0x41, 0x49, 0x7F, // 3  3
+  0x0F, 0x08, 0x7E, // 4  4
+  0x4F, 0x49, 0x79, // 5  5
+  0x7F, 0x49, 0x79, // 6  6
+  0x03, 0x01, 0x7F, // 7  7
+  0x7F, 0x49, 0x7F, // 8  8
+  0x4F, 0x49, 0x7F, // 9  9
+  0x7F, 0x09, 0x7F, // A 10
+  0x7F, 0x48, 0x78, // b 11
+  0x7F, 0x41, 0x63, // C 12
+  0x78, 0x48, 0x7F, // d 13
+  0x7F, 0x49, 0x41, // E 14
+  0x7F, 0x09, 0x01, // F 15
+  0x00, 0x60, 0x00, // . 16
+  0x00, 0x36, 0x00, // : 17
+  0x08, 0x08, 0x08, // - 18
+  0x00, 0x00, 0x00  //   19
+};
 
 // OLED init function
 void OLED_init(void) {
@@ -195,13 +205,19 @@ void OLED_printB(uint8_t *buffer) {
   I2C_stop();                             // stop transmission
 }
 
-// main function
+// -----------------------------------------------------------------------------
+// Main Function
+// -----------------------------------------------------------------------------
+
 int main(void) {
+  // Variables
   uint8_t buffer[8] = {0, 0, 17, 0, 0, 16, 0, 0};       // screen buffer
   uint8_t counter_a = 0, counter_b = 0, counter_c = 0;  // 8-bit counter variables
   
+  // Setup
   OLED_init();                            // initialize the OLED
 
+  // Loop
   while(1) {                              // loop until forever                         
     OLED_printB(buffer);                  // print screen buffer
     counter_a++;                          // increase counter a
