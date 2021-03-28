@@ -78,7 +78,7 @@ void I2C_init(void) {
 
 // I2C start transmission
 void I2C_start(uint8_t addr) {
-  TWI0.MADDR = addr;                              // send address
+  TWI0.MADDR = addr;                              // start sending address
 }
 
 // I2C stop transmission
@@ -91,7 +91,7 @@ void I2C_stop(void) {
 // I2C transmit one data byte to the slave, ignore ACK bit
 void I2C_write(uint8_t data) {
   while (~TWI0.MSTATUS & TWI_WIF_bm);             // wait for last transfer to complete
-  TWI0.MDATA = data;                              // send data byte 
+  TWI0.MDATA = data;                              // start sending data byte 
 }
 
 // -----------------------------------------------------------------------------
