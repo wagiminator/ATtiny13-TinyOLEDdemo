@@ -1,15 +1,16 @@
-# TinyOLEDdemo - I²C OLED on an ATtiny10 or ATtiny13
-This is just a little demo on how to use an I²C OLED with the limited capabilities of an ATtiny10 or ATtiny13.
+# TinyOLEDdemo - I²C OLED on an ATtiny10, ATtiny13A or ATtiny202
+This is just a little demo on how to use an I²C OLED with the limited capabilities of an ATtiny10, ATtiny13A or ATtiny202.
 
-![pic1.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/TinyOLEDdemo_pic1.jpg)
-![pic4.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/TinyOLEDdemo_pic4.jpg)
+![pic1.jpg](https://raw.githubusercontent.com/wagiminator/ATtiny13-TinyOLEDdemo/main/documentation/TinyOLEDdemo_pic1.jpg)
+![pic4.jpg](https://raw.githubusercontent.com/wagiminator/ATtiny13-TinyOLEDdemo/main/documentation/TinyOLEDdemo_pic4.jpg)
+![pic5.jpg](https://raw.githubusercontent.com/wagiminator/ATtiny13-TinyOLEDdemo/main/documentation/TinyOLEDdemo_pic5.jpg)
 
 # Wiring
-Connect the OLED module to the ATtiny13A as shown below. The connections for the ATtiny10 are similar.
+Connect the OLED module to the ATtiny13A as shown below. The connections for the ATtiny10 are similar. For the ATtiny202 SDA must be connected to PA1 (pin 4) and SCL to PA2 (pin 5).
 
-![wiring.png](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/TinyOLEDdemo_wiring.png)
+![wiring.png](https://raw.githubusercontent.com/wagiminator/ATtiny13-TinyOLEDdemo/main/documentation/TinyOLEDdemo_wiring.png)
 
-Since the I²C implementation is software-based, you can of course use any other I/O pins instead. Just change the relevant definitions in the code.
+Since the I²C implementation for ATtiny10/13A is software-based, you can of course use any other I/O pins instead. Just change the relevant definitions in the code. The implementation for the ATtiny202 uses hardware TWI, so the pins provided for this must be used.
 
 # I²C Bus, Protocol and Implementation
 I²C (Inter-Integrated Circuit) is a serial protocol to connect low-speed devices. It uses only two wires: SCL (serial clock) and SDA (serial data). The I²C bus is a multi master / slave bus. This means that there is at least one I²C master and also at least one I²C slave. The master selects a slave using its slave address, which must be unique within a bus. A data transfer can only be initiated by an I²C master. The slave always remains passive and only listens to the slave address and compares it with its own slave address. Only when it recognizes its slave address does the slave actively intervene in the bus process.
@@ -21,25 +22,25 @@ Both signals (SCL and SDA) are bidirectional. They are connected via resistors t
 
 For each clock pulse one bit of data is transferred. The SDA signal can only change when the SCL signal is low – when the clock is high the data should be stable.
 
-![bit-transfer.gif](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/i2c-bit-transfer.gif)
+![bit-transfer.gif](https://raw.githubusercontent.com/wagiminator/ATtiny13-TinyOLEDdemo/main/documentation/i2c-bit-transfer.gif)
 
 Each I²C command initiated by master device starts with a START condition and ends with a STOP condition. For both conditions SCL has to be high. A high to low transition of SDA is considered as START and a low to high transition as STOP.
 
-![start-stop.gif](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/i2c-start-stop.gif)
+![start-stop.gif](https://raw.githubusercontent.com/wagiminator/ATtiny13-TinyOLEDdemo/main/documentation/i2c-start-stop.gif)
 
 After the Start condition the bus is considered as busy and can be used by another master only after a Stop condition is detected. Data on the I²C bus is transferred in 8-bit packets (bytes). There is no limitation on the number of bytes, however, each byte must be followed by an Acknowledge bit. This bit signals whether the device is ready to proceed with the next byte. For all data bits including the Acknowledge bit, the master must generate clock pulses. If the slave device does not acknowledges transfer this means that there is no more data or the device is not ready for the transfer yet. The master device must either generate Stop or Repeated Start condition.
 
-![acknowlegde.gif](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/i2c-acknowledge.gif)
+![acknowlegde.gif](https://raw.githubusercontent.com/wagiminator/ATtiny13-TinyOLEDdemo/main/documentation/i2c-acknowledge.gif)
 
 Each slave device on the bus should have a unique 7-bit address. The communication starts with the Start condition, followed by the 7-bit slave address and the data direction bit. If this bit is 0 then the master will write to the slave device. Otherwise, if the data direction bit is 1, the master will read from slave device. After the slave address and the data direction is sent, the master can continue with reading or writing. The communication is ended with the Stop condition which also signals that the I²C bus is free. If the master needs to communicate with other slaves it can generate a repeated start with another slave address without generation Stop condition. All the bytes are transferred with the MSB bit shifted first.
 
-![command.gif](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/i2c-command.gif)
+![command.gif](https://raw.githubusercontent.com/wagiminator/ATtiny13-TinyOLEDdemo/main/documentation/i2c-command.gif)
 
 If the master only writes to the slave device then the data transfer direction is not changed.
 
-![address.gif](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/i2c-7-bit-address-writing.gif)
+![address.gif](https://raw.githubusercontent.com/wagiminator/ATtiny13-TinyOLEDdemo/main/documentation/i2c-7-bit-address-writing.gif)
 
-## I²C Implementation
+## I²C Implementation for ATtiny10/13A
 The I²C protocol implementation is based on a crude bitbanging method. It was specifically designed for the limited resources of ATtiny10 and ATtiny13, but should work with some other AVRs as well. To make the code as compact as possible, the following restrictions apply:
 - the clock frequency of the MCU must not exceed 4.8 MHz,
 - the slave device must support fast mode 400 kbps (is mostly the case),
@@ -99,7 +100,42 @@ Don't forget the pull-up resistors on the SDA and SCL lines! Many modules, such 
 
 Here is the result at a clock rate of 4.8 MHz. It doesn't quite meet the specification, but so far it works without any problems.
 
-![I2C@4.8MHz.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/I2C@4.8MHz.jpg)
+![I2C@4.8MHz.jpg](https://raw.githubusercontent.com/wagiminator/ATtiny13-TinyOLEDdemo/main/documentation/I2C@4.8MHz.jpg)
+
+## I²C Implementation for ATtiny202
+Since the new tinyAVR are equipped with a very easy-to-use hardware module for I²C (called TWI: Two-Wire Interface), this is also used here. The advantage is that while a byte is being clocked out, the main program can prepare the next byte at the same time. The disadvantage is that you are limited to using certain pins. In order to keep the memory requirement as low as possible, the query of the acknowledge bit and error control are again dispensed with. The total memory requirement is about as high as with software bit-banging.
+
+```c
+#define I2C_FREQ  400000L                         // I2C clock frequency in Hz
+#define I2C_BAUD  ((F_CPU / I2C_FREQ) - 10) / 2;  // simplified BAUD calculation
+
+// I2C init function
+void I2C_init(void) {
+	TWI0.MBAUD   = I2C_BAUD;                        // set BAUD rate
+	TWI0.MCTRLA  = TWI_ENABLE_bm;                   // enable TWI
+	TWI0.MSTATUS = TWI_BUSSTATE_IDLE_gc;            // set bus idle
+}
+
+// I2C start transmission
+void I2C_start(uint8_t addr) {
+	TWI0.MADDR = addr;                              // send address
+}
+
+// I2C stop transmission
+void I2C_stop(void) {
+  while (~TWI0.MSTATUS & TWI_WIF_bm);             // wait for last transfer to complete
+	TWI0.MCTRLB |= TWI_MCMD_STOP_gc;                // send stop condition
+	while (~TWI0.MSTATUS & TWI_BUSSTATE_IDLE_gc);   // wait until bus is idle
+}
+
+// I2C transmit one data byte to the slave, ignore ACK bit
+void I2C_write(uint8_t data) {
+  while (~TWI0.MSTATUS & TWI_WIF_bm);             // wait for last transfer to complete
+  TWI0.MDATA = data;                              // send data byte 
+}
+```
+
+10 Mhz was chosen for the CPU clock frequency. This is the highest frequency at which the ATtiny still runs safely with 2.7V, which is necessary for battery-powered applications.
 
 # SSD1306 128x32 Pixels OLED Display
 The functions for the OLED are adapted to the SSD1306 128x32 OLED module, but they can easily be modified to be used for other modules. In order to save resources, only the basic functionalities are implemented.
@@ -140,8 +176,8 @@ void OLED_init(void) {
 ## Accessing the Video RAM
 To write data into the video RAM of the SSD1306, the control byte 0x40 is first transmitted after the address. Any number of data bytes can then be sent. In horizontal addressing mode (this was set in the initial command sequence) the column address pointer is increased automatically by 1. If the column address pointer reaches column end address, the column address pointer is reset to column start address and page address pointer is increased by 1. When both column and page address pointers reach the end address, the pointers are reset to column start address and page start address. Note that only Page0 to Page3 are used for the 128x32 pixel OLED in this example.
 
-![SSD1306_RAM.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/SSD1306_RAM.jpg)
-![SSD1306_horizontal.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/SSD1306_horizontal.jpg)
+![SSD1306_RAM.jpg](https://raw.githubusercontent.com/wagiminator/ATtiny13-TinyOLEDdemo/main/documentation/SSD1306_RAM.jpg)
+![SSD1306_horizontal.jpg](https://raw.githubusercontent.com/wagiminator/ATtiny13-TinyOLEDdemo/main/documentation/SSD1306_horizontal.jpg)
 
 A simple example of this is the OLED_clear function. 128 x 4 = 512 zeros are written into the video RAM to clear the screen. The pointer is then back in its starting position. With the OLED_cursor function, page and column pointers can be set directly. This corresponds to the cursor position on the screen. Note that due to the arrangement of the video memory, the vertical position of the cursor is only possible page by page, i.e. every 8 pixels.
 
@@ -205,12 +241,12 @@ void OLED_printP(const char* p) {
 }
 ```
 
-![pic2.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/TinyOLEDdemo_pic2.jpg)
+![pic2.jpg](https://raw.githubusercontent.com/wagiminator/ATtiny13-TinyOLEDdemo/main/documentation/TinyOLEDdemo_pic2.jpg)
 
 ## Writing Big Numbers on the OLED Display
 In the second demo, large numbers are shown on the display. A simple 3x8 pixel font is used for this, which is upscaled in software to a size of 16x32 pixels for each character. This means that a total of 8 characters can be shown on the OLED display. In order to save the functions for clearing the screen and for setting the cursor, the entire video memory is always written from an 8-byte buffer which contains the 8 characters. To make things even easier, this time the vertical addressing mode was used. Note again that only Page0 to Page3 are used for the 128x32 pixel OLED in this example.
 
-![SSD1306_vertical.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/SSD1306_vertical.jpg)
+![SSD1306_vertical.jpg](https://raw.githubusercontent.com/wagiminator/ATtiny13-TinyOLEDdemo/main/documentation/SSD1306_vertical.jpg)
 
 ```c
 #define OLED_INIT_LEN   15                      // 15: no screen flip, 17: screen flip
@@ -271,12 +307,13 @@ void OLED_printB(uint8_t *buffer) {
 }
 ```
 
-![pic3.jpg](https://github.com/wagiminator/ATtiny13-TinyOLEDdemo/blob/main/documentation/TinyOLEDdemo_pic3.jpg)
+![pic3.jpg](https://raw.githubusercontent.com/wagiminator/ATtiny13-TinyOLEDdemo/main/documentation/TinyOLEDdemo_pic3.jpg)
 
 # References, Links and Notes
-1. Good description of the I2C specification: https://i2c.info/i2c-bus-specification
-2. Complete I2C Bus Specification and User Manual: http://www.nxp.com/documents/user_manual/UM10204.pdf
-3. SSD1306 Datasheet: https://cdn-shop.adafruit.com/datasheets/SSD1306.pdf
-4. ATtiny13A Datasheet: http://ww1.microchip.com/downloads/en/DeviceDoc/doc8126.pdf
-5. ATtiny10 Datasheet: http://ww1.microchip.com/downloads/en/DeviceDoc/atmel-8127-avr-8-bit-microcontroller-attiny4-attiny5-attiny9-attiny10_datasheet.pdf
-6. Nerd Ralph's Blog: https://nerdralph.blogspot.com/
+1. [Good description of the I2C specification](https://i2c.info/i2c-bus-specification)
+2. [Complete I2C Bus Specification and User Manual](http://www.nxp.com/documents/user_manual/UM10204.pdf)
+3. [SSD1306 Datasheet](https://cdn-shop.adafruit.com/datasheets/SSD1306.pdf)
+4. [ATtiny10 Datasheet](http://ww1.microchip.com/downloads/en/DeviceDoc/atmel-8127-avr-8-bit-microcontroller-attiny4-attiny5-attiny9-attiny10_datasheet.pdf)
+5. [ATtiny13A Datasheet](http://ww1.microchip.com/downloads/en/DeviceDoc/doc8126.pdf)
+6. [ATtiny202 Datasheet](http://ww1.microchip.com/downloads/en/DeviceDoc/ATtiny202-402-AVR-MCU-with-Core-Independent-Peripherals_and-picoPower-40001969A.pdf)
+7. [Ralph Doncaster's Blog](https://nerdralph.blogspot.com/)

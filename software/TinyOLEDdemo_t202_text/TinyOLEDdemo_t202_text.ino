@@ -1,35 +1,25 @@
-// tinyOLEDdemo - controlling an I²C OLED with an ATtiny13
+// tinyOLEDdemo - controlling an I²C OLED with an ATtiny202
 //
 // This is just a little demo on how to use an I²C OLED with the limited
-// capabilities of an ATtiny13.
+// capabilities of an ATtiny202.
 //
-// The I²C protocol implementation is based on a crude bitbanging method.
-// It was specifically designed for the limited resources of ATtiny10 and
-// ATtiny13, but should work with some other AVRs as well.
-// To make the code as compact as possible, the following restrictions apply:
-// - the clock frequency of the MCU must not exceed 4.8 MHz,
-// - the slave device must support fast mode 400 kbps (is mostly the case),
-// - the slave device must not stretch the clock (this is usually the case),
-// - the acknowledge bit sent by the slave device is ignored.
-// If these restrictions are observed, the implementation works almost without
-// delays. An SCL HIGH must be at least 600ns long in Fast Mode. At a maximum
-// clock rate of 4.8 MHz, this is shorter than three clock cycles. An SCL LOW
-// must be at least 1300ns long. Since the SDA signal has to be applied anyway,
-// a total of at least six clock cycles pass. Ignoring the ACK signal and
-// disregarding clock stretching also saves a few bytes of flash. A function
+// The I²C protocol implementation is based on the hardware TWI (two wire
+// interface) of the tinyAVR. In order to make it as small as possible,
+// most status flags including the acknowledge bit are ignored. A function
 // for reading from the slave was omitted because it is not necessary here.
-// Overall, the I2C implementation only takes up 56 bytes of flash.
+// Overall, the I2C implementation only takes up 60 bytes of flash.
+//
+// The functions for the OLED are adapted to the SSD1306 128x32 OLED module,
+// but they can easily be modified to be used for other modules. In order to
+// save resources, only the basic functionalities are implemented.  
 //
 // Ralph Doncaster (nerdralph) pointed out that the SSD1306 can be controlled
-// much faster than specified. Therefore an MCU clock rate of 9.6 MHz is also
+// much faster than specified. Therefore an I²C clock rate of 800 kHz is also
 // possible in this case.
 //
 // Don't forget the pull-up resistors on the SDA and SCL lines! Many modules,
 // such as the SSD1306 OLED module, have already integrated them.
 //
-// The functions for the OLED are adapted to the SSD1306 128x32 OLED module,
-// but they can easily be modified to be used for other modules. In order to
-// save resources, only the basic functionalities are implemented.  
 //
 //    +-----------------------------+
 // ---|SDA +--------------------+   |
@@ -38,15 +28,19 @@
 // ---|GND +--------------------+   |
 //    +-----------------------------+
 //
-//                   +-\/-+
-// --- A0 (D5) PB5  1|°   |8  Vcc
-// --- A3 (D3) PB3  2|    |7  PB2 (D2) A1 --- SCL OLED
-// --- A2 (D4) PB4  3|    |6  PB1 (D1) ------ 
-//             GND  4|    |5  PB0 (D0) ------ SDA OLED
-//                   +----+  
+//                         +-\/-+
+//                   Vcc  1|°   |8  GND
+//              (D0) PA6  2|    |7  PA3 (D4)
+//              (D1) PA7  3|    |6  PA0 (D5) --- UPDI
+// SDA OLED --- (D2) PA1  4|    |5  PA2 (D3) --- SCL OLED
+//                         +----+  
 //
-// Controller:  ATtiny13
-// Clockspeed:  9.6 MHz internal
+// Core:    megaTinyCore (https://github.com/SpenceKonde/megaTinyCore)
+// Board:   ATtiny412/402/212/202
+// Chip:    ATtiny202
+// Clock:   10 Mhz internal
+// Leave the rest on default settings. Don't forget to "Burn bootloader"!
+// No Arduino core functions or libraries are used.
 //
 // Font used in this demo was adapted from Neven Boyanov and Stephen Denne.
 // ( https://github.com/datacute/Tiny4kOLED )
@@ -54,26 +48,53 @@
 // A big thank you to Ralph Doncaster (nerdralph) for his optimization tips.
 // ( https://nerdralph.blogspot.com/ , https://github.com/nerdralph )
 //
-// 2020 by Stefan Wagner 
+// AVR toolchain for the new tinyAVR microcontrollers:
+// https://www.microchip.com/mplab/avr-support/avr-and-arm-toolchains-c-compilers
+//
+// 2021 by Stefan Wagner 
 // Project Files (EasyEDA): https://easyeda.com/wagiminator
 // Project Files (Github):  https://github.com/wagiminator
 // License: http://creativecommons.org/licenses/by-sa/3.0/
 
 
-#define __DELAY_BACKWARD_COMPATIBLE__ 1       // less delay accuracy saves 16 bytes flash
-
-// libraries
 #include <avr/io.h>
-#include <avr/pgmspace.h>
 #include <util/delay.h>
 
-// I2C definitions
-#define I2C_SDA         PB0                   // serial data pin
-#define I2C_SCL         PB2                   // serial clock pin
-#define I2C_SDA_HIGH()  DDRB &= ~(1<<I2C_SDA) // release SDA   -> pulled HIGH by resistor
-#define I2C_SDA_LOW()   DDRB |=  (1<<I2C_SDA) // SDA as output -> pulled LOW  by MCU
-#define I2C_SCL_HIGH()  DDRB &= ~(1<<I2C_SCL) // release SCL   -> pulled HIGH by resistor
-#define I2C_SCL_LOW()   DDRB |=  (1<<I2C_SCL) // SCL as output -> pulled LOW  by MCU
+// -----------------------------------------------------------------------------
+// I2C Master Implementation (Write only)
+// -----------------------------------------------------------------------------
+
+#define I2C_FREQ  800000L                         // I2C clock frequency in Hz
+#define I2C_BAUD  ((F_CPU / I2C_FREQ) - 10) / 2;  // simplified BAUD calculation
+
+// I2C init function
+void I2C_init(void) {
+	TWI0.MBAUD   = I2C_BAUD;                        // set BAUD rate
+	TWI0.MCTRLA  = TWI_ENABLE_bm;                   // enable TWI
+	TWI0.MSTATUS = TWI_BUSSTATE_IDLE_gc;            // set bus idle
+}
+
+// I2C start transmission
+void I2C_start(uint8_t addr) {
+	TWI0.MADDR = addr;                              // send address
+}
+
+// I2C stop transmission
+void I2C_stop(void) {
+  while (~TWI0.MSTATUS & TWI_WIF_bm);             // wait for last transfer to complete
+	TWI0.MCTRLB |= TWI_MCMD_STOP_gc;                // send stop condition
+	while (~TWI0.MSTATUS & TWI_BUSSTATE_IDLE_gc);   // wait until bus is idle
+}
+
+// I2C transmit one data byte to the slave, ignore ACK bit
+void I2C_write(uint8_t data) {
+  while (~TWI0.MSTATUS & TWI_WIF_bm);             // wait for last transfer to complete
+  TWI0.MDATA = data;                              // send data byte 
+}
+
+// -----------------------------------------------------------------------------
+// OLED Implementation
+// -----------------------------------------------------------------------------
 
 // OLED definitions
 #define OLED_ADDR       0x78                  // OLED write address
@@ -82,7 +103,7 @@
 #define OLED_INIT_LEN   12                    // 12: no screen flip, 14: screen flip
 
 // OLED init settings
-const uint8_t OLED_INIT_CMD[] PROGMEM = {
+const uint8_t OLED_INIT_CMD[] = {
   0xA8, 0x1F,       // set multiplex (HEIGHT-1): 0x1F for 128x32, 0x3F for 128x64 
   0x22, 0x00, 0x03, // set min and max page
   0x20, 0x00,       // set horizontal memory addressing mode
@@ -93,7 +114,7 @@ const uint8_t OLED_INIT_CMD[] PROGMEM = {
 };
 
 // standard ASCII 5x8 font (adapted from Neven Boyanov and Stephen Denne)
-const uint8_t OLED_FONT[] PROGMEM = {
+const uint8_t OLED_FONT[] = {
   0x00, 0x00, 0x00, 0x00, 0x00, //   0 
   0x00, 0x00, 0x2f, 0x00, 0x00, // ! 1 
   0x00, 0x07, 0x00, 0x07, 0x00, // " 2 
@@ -160,54 +181,12 @@ const uint8_t OLED_FONT[] PROGMEM = {
   0x40, 0x40, 0x40, 0x40, 0x40  // _ 63
 };
 
-// messages to print on OLED
-const char Message1[] PROGMEM = "HELLO WORLD !";
-const char Message2[] PROGMEM = "ATTINY13 GOES OLED !";
-const char Message3[] PROGMEM = "THE QUICK BROWN FOX";
-const char Message4[] PROGMEM = "JUMPS OVER THE LAZY";
-const char Message5[] PROGMEM = "DOG  - (0123456789)";
-
-// I2C init function
-void I2C_init(void) {
-  DDRB  &= ~((1<<I2C_SDA)|(1<<I2C_SCL));  // pins as input (HIGH-Z) -> lines released
-  PORTB &= ~((1<<I2C_SDA)|(1<<I2C_SCL));  // should be LOW when as ouput
-}
-
-// I2C transmit one data byte to the slave, ignore ACK bit, no clock stretching allowed
-void I2C_write(uint8_t data) {
-  for(uint8_t i = 8; i; i--) {            // transmit 8 bits, MSB first
-    I2C_SDA_LOW();                        // SDA LOW for now (saves some flash this way)
-    if (data & 0x80) I2C_SDA_HIGH();      // SDA HIGH if bit is 1
-    I2C_SCL_HIGH();                       // clock HIGH -> slave reads the bit
-    data<<=1;                             // shift left data byte, acts also as a delay
-    I2C_SCL_LOW();                        // clock LOW again
-  }
-  I2C_SDA_HIGH();                         // release SDA for ACK bit of slave
-  I2C_SCL_HIGH();                         // 9th clock pulse is for the ACK bit
-  asm("nop");                             // ACK bit is ignored, just a delay
-  I2C_SCL_LOW();                          // clock LOW again
-}
-
-// I2C start transmission
-void I2C_start(uint8_t addr) {
-  I2C_SDA_LOW();                          // start condition: SDA goes LOW first
-  I2C_SCL_LOW();                          // start condition: SCL goes LOW second
-  I2C_write(addr);                        // send slave address
-}
-
-// I2C stop transmission
-void I2C_stop(void) {
-  I2C_SDA_LOW();                          // prepare SDA for LOW to HIGH transition
-  I2C_SCL_HIGH();                         // stop condition: SCL goes HIGH first
-  I2C_SDA_HIGH();                         // stop condition: SDA goes HIGH second
-}
-
 // OLED init function
 void OLED_init(void) {
   I2C_init();                             // initialize I2C first
   I2C_start(OLED_ADDR);                   // start transmission to OLED
   I2C_write(OLED_CMD_MODE);               // set command mode
-  for (uint8_t i = 0; i < OLED_INIT_LEN; i++) I2C_write(pgm_read_byte(&OLED_INIT_CMD[i])); // send the command bytes
+  for (uint8_t i = 0; i < OLED_INIT_LEN; i++) I2C_write(OLED_INIT_CMD[i]); // send the command bytes
   I2C_stop();                             // stop transmission
 }
 
@@ -225,18 +204,14 @@ void OLED_printC(char ch) {
   uint16_t offset = ch - 32;              // calculate position of character in font array
   offset += offset << 2;                  // -> offset = (ch - 32) * 5
   I2C_write(0x00);                        // print spacing between characters
-  for(uint8_t i=5; i; i--) I2C_write(pgm_read_byte(&OLED_FONT[offset++])); // print character
+  for(uint8_t i=5; i; i--) I2C_write(OLED_FONT[offset++]); // print character
 }
 
-// OLED print a string from program memory
-void OLED_printP(const char* p) {
+// OLED print a string (by default from program memory)
+void OLED_printS(const char* p) {
   I2C_start(OLED_ADDR);                   // start transmission to OLED
   I2C_write(OLED_DAT_MODE);               // set data mode
-  char ch = pgm_read_byte(p);             // read first character from program memory
-  while (ch != 0) {                       // repeat until string terminator
-    OLED_printC(ch);                      // print character on OLED
-    ch = pgm_read_byte(++p);              // read next character
-  }
+  while(*p) OLED_printC(*p++);            // print each character of the string
   I2C_stop();                             // stop transmission
 }
 
@@ -260,25 +235,31 @@ void OLED_clear(void) {
   OLED_shift(0);                          // reset vertical shift
 }
 
-// main function
-int main(void) {
-  OLED_init();                            // initialize the OLED
+// -----------------------------------------------------------------------------
+// Main Function
+// -----------------------------------------------------------------------------
 
+int main(void) {
+  // Setup
+  _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, 1); // set clock frequency to 10MHz
+  OLED_init();                            // setup I2C OLED
+
+  // Loop
   while(1) {                              // loop until forever                         
     // print messages
     OLED_clear();                         // clear screen
     OLED_cursor(20, 0);                   // set cursor position
-    OLED_printP(Message1);                // print message 1
+    OLED_printS("HELLO WORLD !");         // print string
     _delay_ms(1000);                      // wait a second
     OLED_cursor(5, 2);                    // set cursor position
-    OLED_printP(Message2);                // print message 2
+    OLED_printS("ATTINY202 GOES OLED!");  // print string
     _delay_ms(4000);                      // wait 4 seconds
     OLED_clear();
-    OLED_printP(Message3);                // print message 3
+    OLED_printS("THE QUICK BROWN FOX");   // print message 3
     OLED_cursor(0, 1);                    // set cursor next line
-    OLED_printP(Message4);                // print message 4
+    OLED_printS("JUMPS OVER THE LAZY");   // print message 4
     OLED_cursor(0, 2);                    // set cursor next line
-    OLED_printP(Message5);                // print message 5
+    OLED_printS("DOG  - (0123456789)");   // print message 5
     _delay_ms(4000);                      // wait 4 seconds
 
     // print all characters

@@ -47,8 +47,14 @@
 //             GND  4|    |5  PB0 (D0) ------ SDA OLED
 //                   +----+  
 //
-// Controller:  ATtiny13
-// Clockspeed:  4.8 MHz internal
+// Controller: ATtiny13
+// Core:       MicroCore (https://github.com/MCUdude/MicroCore)
+// Clockspeed: 4.8 MHz internal
+// BOD:        BOD disabled
+// Timing:     Micros disabled
+// Leave the rest on default settings. Don't forget to "Burn bootloader"!
+// No Arduino core functions or libraries are used. Use the makefile to
+// compile without Arduino IDE.
 //
 // A big thank you to Ralph Doncaster (nerdralph) for his optimization tips.
 // ( https://nerdralph.blogspot.com/ , https://github.com/nerdralph )
