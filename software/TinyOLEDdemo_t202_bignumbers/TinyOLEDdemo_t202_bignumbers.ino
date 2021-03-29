@@ -71,8 +71,8 @@
 
 // I2C init function
 void I2C_init(void) {
-  TWI0.MBAUD   = I2C_BAUD;                        // set BAUD rate
-  TWI0.MCTRLA  = TWI_ENABLE_bm;                   // enable TWI
+  TWI0.MBAUD   = I2C_BAUD;                        // set TWI master BAUD rate
+  TWI0.MCTRLA  = TWI_ENABLE_bm;                   // enable TWI master
   TWI0.MSTATUS = TWI_BUSSTATE_IDLE_gc;            // set bus state to idle
 }
 
