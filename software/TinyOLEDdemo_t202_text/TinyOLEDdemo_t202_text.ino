@@ -82,7 +82,7 @@ void I2C_start(uint8_t addr) {
 // I2C stop transmission
 void I2C_stop(void) {
   while (~TWI0.MSTATUS & TWI_WIF_bm);             // wait for last transfer to complete
-  TWI0.MCTRLB |= TWI_MCMD_STOP_gc;                // send stop condition
+  TWI0.MCTRLB = TWI_MCMD_STOP_gc;                 // send stop condition
 }
 
 // I2C transmit one data byte to the slave, ignore ACK bit
