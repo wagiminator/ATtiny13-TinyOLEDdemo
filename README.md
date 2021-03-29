@@ -103,7 +103,7 @@ Here is the result at a clock rate of 4.8 MHz. It doesn't quite meet the specifi
 ![I2C@4.8MHz.jpg](https://raw.githubusercontent.com/wagiminator/ATtiny13-TinyOLEDdemo/main/documentation/I2C@4.8MHz.jpg)
 
 ## I²C Implementation for ATtiny202
-Since the new tinyAVR are equipped with a very easy-to-use hardware module for I²C (called TWI: Two-Wire Interface), this is also used here. The advantage is that while a byte is being clocked out, the main program can prepare the next byte at the same time. The disadvantage is that you are limited to using certain pins. In order to keep the memory requirement as low as possible, the query of the acknowledge bit and error control are again dispensed with. The total memory requirement is about as high as with software bit-banging.
+Since the new tinyAVR are equipped with a very easy-to-use hardware module for I²C (called TWI: Two-Wire Interface), this is also used here. The advantage is that while a byte is being clocked out, the main program can prepare the next byte at the same time. The disadvantage is that you are limited to using certain pins. In order to keep the memory requirement as low as possible, the query of the acknowledge bit and error detection are again dispensed with. The total memory requirement is about as high as with software bit-banging.
 
 ```c
 #define I2C_FREQ  400000L                         // I2C clock frequency in Hz
