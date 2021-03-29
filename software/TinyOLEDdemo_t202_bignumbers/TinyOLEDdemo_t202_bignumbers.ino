@@ -73,7 +73,7 @@
 void I2C_init(void) {
   TWI0.MBAUD   = I2C_BAUD;                        // set BAUD rate
   TWI0.MCTRLA  = TWI_ENABLE_bm;                   // enable TWI
-  TWI0.MSTATUS = TWI_BUSSTATE_IDLE_gc;            // set bus idle
+  TWI0.MSTATUS = TWI_BUSSTATE_IDLE_gc;            // set bus state to idle
 }
 
 // I2C start transmission
@@ -85,7 +85,6 @@ void I2C_start(uint8_t addr) {
 void I2C_stop(void) {
   while (~TWI0.MSTATUS & TWI_WIF_bm);             // wait for last transfer to complete
   TWI0.MCTRLB |= TWI_MCMD_STOP_gc;                // send stop condition
-  while (~TWI0.MSTATUS & TWI_BUSSTATE_IDLE_gc);   // wait until bus is idle
 }
 
 // I2C transmit one data byte to the slave, ignore ACK bit
