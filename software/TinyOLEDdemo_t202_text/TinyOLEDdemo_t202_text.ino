@@ -64,7 +64,7 @@
 // I2C Master Implementation (Write only)
 // -----------------------------------------------------------------------------
 
-#define I2C_FREQ  800000L                         // I2C clock frequency in Hz
+#define I2C_FREQ  800000UL                        // I2C clock frequency in Hz
 #define I2C_BAUD  ((F_CPU / I2C_FREQ) - 10) / 2;  // simplified BAUD calculation
 
 // I2C init function
