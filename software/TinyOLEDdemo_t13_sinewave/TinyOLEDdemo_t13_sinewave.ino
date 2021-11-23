@@ -175,7 +175,7 @@ void OLED_plotChar(char c) {
   uint16_t offset = c - 32;                   // calculate position of character in font array
   offset += offset << 2;                      // -> offset = (c - 32) * 5
   for(uint8_t i=4; i; i--) I2C_write(0x00);   // print spacing between characters
-  sine_ptr = (sine_ptr + 1) & 0x7F;           // increase sine table pointer
+  sine_ptr++;                                 // increase sine table pointer
   for(uint8_t i=5; i; i--) {                  // character consists of 5 lines
     uint32_t ch = pgm_read_byte(&OLED_FONT[offset++]); // read line of character
     uint8_t  pt = sine_ptr & 0x1F;            // get quarter part of pointer
@@ -184,7 +184,7 @@ void OLED_plotChar(char c) {
     (pt & 1) ? (sh &= 0x0F) : (sh >>= 4);     // get correct nibble
     if(sine_ptr & 0x40) sh = 0x17 - sh;       // mirror on the x-axis, if necessary
     ch <<= sh;                                // shift char according to sine table value
-    sine_ptr = (sine_ptr + 1) & 0x7F;         // increase sine table pointer
+    sine_ptr++;                               // increase sine table pointer
     for(uint8_t i=4; i; i--) {                // write the shifted line on the OLED ...
       I2C_write(ch);
       ch >>= 8;
@@ -237,6 +237,6 @@ int main(void) {
     // Animate messages
     OLED_cursor(0, 0);                        // set cursor position
     OLED_print(Message);                      // print message
-    sine_ptr = (sine_ptr - 1) & 0x7F;         // calculate new pointer start
+    sine_ptr--;                               // shift whole wave to the right
   }
 }
