@@ -27,14 +27,14 @@
 // Don't forget the pull-up resistors on the SDA and SCL lines! Many modules,
 // such as the SSD1306 OLED module, have already integrated them.
 //
-// The functions for the OLED are adapted to the SSD1306 128x32 OLED module,
+// The functions for the OLED are adapted to the SSD1306 128x32 or 128x64 OLED module,
 // but they can easily be modified to be used for other modules. In order to
 // save resources, only the basic functionalities are implemented.  
 //
 //    +-----------------------------+
 // ---|SDA +--------------------+   |
 // ---|SCL |    SSD1306 OLED    |   |
-// ---|VCC |       128x36       |   |
+// ---|VCC |   128x32 (or 64)   |   |
 // ---|GND +--------------------+   |
 //    +-----------------------------+
 //
@@ -64,6 +64,26 @@
 // Project Files (EasyEDA): https://easyeda.com/wagiminator
 // Project Files (Github):  https://github.com/wagiminator
 // License: http://creativecommons.org/licenses/by-sa/3.0/
+
+// Select the screen size
+
+//#define SCREEN_128x32
+#define SCREEN_128x64
+
+#if defined(SCREEN_128x32) and defined(SCREEN_128x64)
+#error "Please define either SCREEN_128x32 or SCREEN_128x64 but not both!"
+#endif
+#if !defined(SCREEN_128x32) and !defined(SCREEN_128x64)
+#error "Please define one of SCREEN_128x32 or SCREEN_128x64!"
+#endif
+
+#if defined(SCREEN_128x32)
+#define PAGES     4
+#define MULTIPLE  1
+#else
+#define PAGES     8
+#define MULTIPLE  2
+#endif
 
 
 #define __DELAY_BACKWARD_COMPATIBLE__ 1       // less delay accuracy saves 16 bytes flash
@@ -130,14 +150,20 @@ void I2C_stop(void) {
 #define OLED_ADDR       0x78                  // OLED write address
 #define OLED_CMD_MODE   0x00                  // set command mode
 #define OLED_DAT_MODE   0x40                  // set data mode
+#if defined(SCREEN_128x32)
 #define OLED_INIT_LEN   12                    // 12: no screen flip, 14: screen flip
+#else
+#define OLED_INIT_LEN   5                    // 5: no screen flip, 7: screen flip
+#endif
 
 // OLED init settings
 const uint8_t OLED_INIT_CMD[] PROGMEM = {
-  0xA8, 0x1F,       // set multiplex (HEIGHT-1): 0x1F for 128x32, 0x3F for 128x64 
-  0x22, 0x00, 0x03, // set min and max page
-  0x20, 0x00,       // set horizontal memory addressing mode
+  0xA8, ((PAGES * 8) - 1),       // set multiplex (HEIGHT-1): 31 for 128x32, 63 for 128x64
+#if defined(SCREEN_128x32)
+  0x20, 0x00,       // set page memory addressing mode
+  0x22, 0x00, (PAGES - 1), // set min and max page
   0xDA, 0x02,       // set COM pins hardware configuration to sequential
+#endif
   0x8D, 0x14,       // enable charge pump
   0xAF,             // switch on OLED
   0xA1, 0xC8        // flip the screen
@@ -253,20 +279,21 @@ void OLED_printP(const char* p) {
 void OLED_cursor(uint8_t xpos, uint8_t ypos) {
   I2C_start(OLED_ADDR);                   // start transmission to OLED
   I2C_write(OLED_CMD_MODE);               // set command mode
+  I2C_write(0xB0 | (ypos & 0x07));        // set start page
   I2C_write(xpos & 0x0F);                 // set low nibble of start column
   I2C_write(0x10 | (xpos >> 4));          // set high nibble of start column
-  I2C_write(0xB0 | (ypos & 0x07));        // set start page
   I2C_stop();                             // stop transmission
 }
 
 // OLED clear screen
 void OLED_clear(void) {
-  OLED_cursor(0, 0);                      // set cursor at upper left corner
-  I2C_start(OLED_ADDR);                   // start transmission to OLED
-  I2C_write(OLED_DAT_MODE);               // set data mode
-  for(uint16_t i=512; i; i--) I2C_write(0x00); // clear the screen
-  I2C_stop();                             // stop transmission
-  OLED_shift(0);                          // reset vertical shift
+  for (uint8_t i = 0; i < PAGES; i++) {   // clear screen line by line
+    OLED_cursor(0, i);
+    I2C_start(OLED_ADDR);                   // start transmission to OLED
+    I2C_write(OLED_DAT_MODE);               // set data mode
+    for(uint8_t i=128; i; i--) I2C_write(0x00);
+    I2C_stop();                             // stop transmission
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -281,6 +308,7 @@ const char Message4[] PROGMEM = "JUMPS OVER THE LAZY";
 const char Message5[] PROGMEM = "DOG  - (0123456789)";
 
 int main(void) {
+  _delay_ms(200);
   // Setup
   OLED_init();                            // initialize the OLED
 
@@ -291,27 +319,35 @@ int main(void) {
     OLED_cursor(20, 0);                   // set cursor position
     OLED_printP(Message1);                // print message 1
     _delay_ms(1000);                      // wait a second
-    OLED_cursor(5, 2);                    // set cursor position
+    OLED_cursor(5, 2 * MULTIPLE);         // set cursor position
     OLED_printP(Message2);                // print message 2
     _delay_ms(4000);                      // wait 4 seconds
     OLED_clear();
     OLED_printP(Message3);                // print message 3
-    OLED_cursor(0, 1);                    // set cursor next line
+    OLED_cursor(0, 1 * MULTIPLE);         // set cursor next line
     OLED_printP(Message4);                // print message 4
-    OLED_cursor(0, 2);                    // set cursor next line
+    OLED_cursor(0, 2 * MULTIPLE);         // set cursor next line
     OLED_printP(Message5);                // print message 5
     _delay_ms(4000);                      // wait 4 seconds
 
-    // print all characters
-    OLED_cursor(0, 0);                    // set cursor at upper left corner
-    I2C_start(OLED_ADDR);                 // start transmission to OLED
-    I2C_write(OLED_DAT_MODE);             // set data mode
-    for(uint8_t i=32; i<64+32; i++) OLED_printC(i); // print all characters
-    I2C_stop();                           // stop transmission
+    // print all characters on 4 lines, 20 per line
+    uint8_t c = 32;
+    for (uint8_t l = 0; l < 4; l++) {
+      OLED_cursor(0, l * MULTIPLE);
+      I2C_start(OLED_ADDR);                 // start transmission to OLED
+      I2C_write(OLED_DAT_MODE);             // set data mode
+      for (uint8_t p = 20; p; p--) {
+        OLED_printC(c++);
+        if (c == 32 + 64) {
+          break;
+        }
+      }
+      I2C_stop();                           // stop transmission
+    }
     _delay_ms(3000);                      // wait 3 seconds
 
     // scroll out the text
-    for (uint8_t i=0; i<32; i++) {        // shift 32 pixels upwards
+    for (uint8_t i=0; i<(PAGES * 8); i++) {        // shift pixels pixels upwards
       OLED_shift(i);                      // set vertical shift value
       _delay_ms(100);                     // delay a bit
     }
