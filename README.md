@@ -1,6 +1,8 @@
 # TinyOLEDdemo - I²C OLED on an ATtiny10, ATtiny13A or ATtiny202
 This is just a little demo on how to use an I²C OLED with the limited capabilities of an ATtiny10, ATtiny13A or ATtiny202.
 
+- Project Video (Youtube): https://youtu.be/-VUbEFFfDFA
+
 ![pic1.jpg](https://raw.githubusercontent.com/wagiminator/ATtiny13-TinyOLEDdemo/main/documentation/TinyOLEDdemo_pic1.jpg)
 ![pic4.jpg](https://raw.githubusercontent.com/wagiminator/ATtiny13-TinyOLEDdemo/main/documentation/TinyOLEDdemo_pic4.jpg)
 ![pic5.jpg](https://raw.githubusercontent.com/wagiminator/ATtiny13-TinyOLEDdemo/main/documentation/TinyOLEDdemo_pic5.jpg)
@@ -311,8 +313,6 @@ void OLED_printB(uint8_t *buffer) {
 # One more thing...
 
 ![pic6.gif](https://raw.githubusercontent.com/wagiminator/ATtiny13-TinyOLEDdemo/main/documentation/TinyOLEDdemo_pic6.gif)
-
-- Video (Youtube): https://youtu.be/-VUbEFFfDFA
 
 # References, Links and Notes
 1. [Good description of the I2C specification](https://i2c.info/i2c-bus-specification)
