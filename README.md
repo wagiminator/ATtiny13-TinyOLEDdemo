@@ -312,6 +312,8 @@ void OLED_printB(uint8_t *buffer) {
 
 ![pic6.gif](https://raw.githubusercontent.com/wagiminator/ATtiny13-TinyOLEDdemo/main/documentation/TinyOLEDdemo_pic6.gif)
 
+- Video (Youtube): https://youtu.be/-VUbEFFfDFA
+
 # References, Links and Notes
 1. [Good description of the I2C specification](https://i2c.info/i2c-bus-specification)
 2. [Complete I2C Bus Specification and User Manual](http://www.nxp.com/documents/user_manual/UM10204.pdf)
