@@ -204,7 +204,7 @@ void OLED_init(void) {
   I2C_init();                             // initialize I2C first
   I2C_start(OLED_ADDR);                   // start transmission to OLED
   I2C_write(OLED_CMD_MODE);               // set command mode
-  for (uint8_t i = 0; i < OLED_INIT_LEN; i++) I2C_write(pgm_read_byte(&OLED_INIT_CMD[i])); // send the command bytes
+  for (uint8_t i = 0; i < OLED_INIT_LEN; i++) I2C_write(OLED_INIT_CMD[i]);
   I2C_stop();                             // stop transmission
 }
 
@@ -222,18 +222,14 @@ void OLED_printC(char ch) {
   uint16_t offset = ch - 32;              // calculate position of character in font array
   offset += offset << 2;                  // -> offset = (ch - 32) * 5
   I2C_write(0x00);                        // print spacing between characters
-  for(uint8_t i=5; i; i--) I2C_write(pgm_read_byte(&OLED_FONT[offset++])); // print character
+  for(uint8_t i=5; i; i--) I2C_write(OLED_FONT[offset++]); // print character
 }
 
 // OLED print a string from program memory
 void OLED_printP(const char* p) {
   I2C_start(OLED_ADDR);                   // start transmission to OLED
   I2C_write(OLED_DAT_MODE);               // set data mode
-  char ch = pgm_read_byte(p);             // read first character from program memory
-  while (ch != 0) {                       // repeat until string terminator
-    OLED_printC(ch);                      // print character on OLED
-    ch = pgm_read_byte(++p);              // read next character
-  }
+  while(*p) OLED_printC(*p++);
   I2C_stop();                             // stop transmission
 }
 

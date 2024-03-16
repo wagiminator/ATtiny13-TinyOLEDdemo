@@ -152,7 +152,7 @@ void OLED_init(void) {
   I2C_init();                             // initialize I2C first
   I2C_start(OLED_ADDR);                   // start transmission to OLED
   I2C_write(OLED_CMD_MODE);               // set command mode
-  for (uint8_t i = 0; i < OLED_INIT_LEN; i++) I2C_write(pgm_read_byte(&OLED_INIT_CMD[i])); // send the command bytes
+  for (uint8_t i = 0; i < OLED_INIT_LEN; i++) I2C_write(OLED_INIT_CMD[i]); // send the command bytes
   I2C_stop();                             // stop transmission
 }
 
@@ -171,10 +171,10 @@ void OLED_printD(uint8_t ch) {
   ch += ch << 1;                          // calculate position of character in font array
   for(i=8; i; i--) I2C_write(0x00);       // print spacing between characters
   for(i=3; i; i--) {                      // font has 3 bytes per character
-    b = pgm_read_byte(&OLED_FONT[ch++]);  // read character byte
+    b = OLED_FONT[ch++];                  // read character byte
     for(j=0; j<4; j++, b >>= 2) sb[j] = OLED_stretch(b);  // stretch 4 times
     j=4; if(i==2) j=6;                    // calculate x-stretch value
-    while(j--) {                       // write several times (x-direction)
+    while(j--) {                          // write several times (x-direction)
       for(k=0; k<4; k++) I2C_write(sb[k]);// the 4 stretched bytes (y-direction)
     }
   } 
@@ -190,7 +190,7 @@ void OLED_printB(uint8_t *buffer) {
 
 // main function
 int main(void) {
-  uint8_t buffer[8] = {0, 0, 17, 0, 0, 16, 0, 0};       // screen buffer
+  uint8_t buffer[8];                      // screen buffer
   uint8_t counter_a = 0, counter_b = 0, counter_c = 0;  // 8-bit counter variables
   
   CCP = 0xD8;                             // unlock register protection
@@ -210,6 +210,7 @@ int main(void) {
     buffer[3] = counter_b >> 4;           // high nibble of counter b
     buffer[1] = counter_c & 0x0F;         // low nibble of counter c
     buffer[0] = counter_c >> 4;           // high nibble of counter c
+    buffer[5] = 16;                       // decimal
     buffer[2] = 19;                       // set space between c and b for now
     if(counter_a & 0x20) buffer[2] = 17;  // toggle ':' at this position
   }
