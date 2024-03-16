@@ -256,7 +256,7 @@ void OLED_clear(void) {
 // main function
 int main(void) {
   CCP = 0xD8;                             // unlock register protection
-  CLKPSR = 0;                             // set clock prescaler to 0 -> 8 Mhz
+  CLKPSR = 1;                             // set clock prescaler to 0 -> 4 Mhz
   OLED_init();                            // initialize the OLED
 
   while(1) {                              // loop until forever                         

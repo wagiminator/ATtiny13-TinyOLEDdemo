@@ -8,7 +8,7 @@
 
 # Microcontroller Options
 DEVICE  = attiny10
-CLOCK   = 8000000
+CLOCK   = 4000000
 PROGRMR = usbasp
 FUSE    = 0xff
 
